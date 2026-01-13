@@ -5,6 +5,7 @@ import 'package:yazdrive/nav.dart';
 import 'package:yazdrive/services/user_service.dart';
 import 'package:yazdrive/services/trip_service.dart';
 import 'package:yazdrive/services/vehicle_service.dart';
+import 'package:yazdrive/services/location_service.dart';
 import 'package:yazdrive/providers/app_init_provider.dart';
 
 void main() {
@@ -21,6 +22,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => UserService()),
         ChangeNotifierProvider(create: (_) => TripService()),
         ChangeNotifierProvider(create: (_) => VehicleService()),
+        ChangeNotifierProvider(create: (_) => LocationService()),
         ChangeNotifierProxyProvider3<UserService, TripService, VehicleService, AppInitProvider>(
           create: (context) => AppInitProvider(
             userService: context.read<UserService>(),
