@@ -11,11 +11,36 @@ class VehicleService extends ChangeNotifier {
   
   List<VehicleModel> _vehicles = [];
   bool _isLoading = false;
+  VehicleModel? _selectedVehicle;
   
   List<VehicleModel> get vehicles => _vehicles;
   bool get isLoading => _isLoading;
+  VehicleModel? get selectedVehicle => _selectedVehicle;
   List<VehicleModel> get activeVehicles => _vehicles.where((v) => v.isActive).toList();
   List<VehicleModel> get wheelchairAccessibleVehicles => _vehicles.where((v) => v.isActive && v.wheelchairAccessible).toList();
+  
+  /// Select a vehicle for the current driving session
+  void selectVehicle(VehicleModel vehicle) {
+    _selectedVehicle = vehicle;
+    notifyListeners();
+  }
+  
+  /// Clear selected vehicle (when driver logs out or ends shift)
+  void clearSelectedVehicle() {
+    _selectedVehicle = null;
+    notifyListeners();
+  }
+  
+  /// Search vehicles by license plate, VIN, make, or model
+  List<VehicleModel> searchVehicles(String query) {
+    if (query.isEmpty) return activeVehicles;
+    return activeVehicles.where((v) =>
+      v.licensePlate.toLowerCase().contains(query.toLowerCase()) ||
+      v.vin.toLowerCase().contains(query.toLowerCase()) ||
+      v.make.toLowerCase().contains(query.toLowerCase()) ||
+      v.model.toLowerCase().contains(query.toLowerCase())
+    ).toList();
+  }
   
   Future<void> loadVehicles() async {
     _isLoading = true;

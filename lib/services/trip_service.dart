@@ -1,19 +1,323 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:yazdrive/models/trip_model.dart';
+import 'package:yazdrive/services/notification_service.dart';
 
-/// Service for managing NEMT trips
+/// Service for managing NEMT trips with real-time sync
 class TripService extends ChangeNotifier {
   static const String _storageKey = 'trips';
   final Uuid _uuid = const Uuid();
-  
+
   List<TripModel> _trips = [];
   bool _isLoading = false;
-  
+  IO.Socket? _socket;
+  String? _currentDriverId;
+
   List<TripModel> get trips => _trips;
   bool get isLoading => _isLoading;
+
+  /// Get the backend API URL
+  static String get _baseUrl {
+    if (kIsWeb) return 'https://driveme-backedn-production.up.railway.app';
+    return Platform.isAndroid
+      ? 'https://driveme-backedn-production.up.railway.app'
+      : 'https://driveme-backedn-production.up.railway.app';
+  }
+
+  /// Initialize WebSocket connection for real-time trip updates
+  void initializeSocketConnection(String driverId) {
+    if (_socket != null && _socket!.connected && _currentDriverId == driverId) {
+      return; // Already connected
+    }
+    
+    // Disconnect existing if different driver (shouldn't happen usually but good safety)
+    if (_socket != null) {
+      disconnectSocket();
+    }
+
+    _currentDriverId = driverId;
+
+    _socket = IO.io(_baseUrl, <String, dynamic>{
+      'transports': ['websocket'],
+      'autoConnect': true,
+      'reconnection': true,
+      'reconnectionAttempts': 5,
+      'reconnectionDelay': 1000,
+    });
+
+    _socket!.onConnect((_) {
+      debugPrint('TripService: Socket connected');
+      // Register as driver
+      _socket!.emit('driverConnect', {'driverId': driverId});
+    });
+
+    _socket!.on('connected', (data) {
+      debugPrint('TripService: Driver connected confirmed: $data');
+    });
+
+    // Listen for new trip assignments
+    _socket!.on('trip:assigned', (data) {
+      debugPrint('TripService: New trip assigned: $data');
+      _handleTripAssignment(data);
+    });
+
+    // Listen for trip updates
+    _socket!.on('trip:updated', (data) {
+      debugPrint('TripService: Trip updated: $data');
+      _handleTripUpdate(data);
+    });
+
+    // Listen for trip cancellations
+    _socket!.on('trip:cancelled', (data) {
+      debugPrint('TripService: Trip cancelled: $data');
+      _handleTripCancellation(data);
+    });
+
+    // Listen for status change acknowledgments
+    _socket!.on('tripUpdateAck', (data) {
+      debugPrint('TripService: Trip update acknowledged: $data');
+    });
+
+    _socket!.onDisconnect((_) {
+      debugPrint('TripService: Socket disconnected');
+    });
+
+    _socket!.onError((error) {
+      debugPrint('TripService: Socket error: $error');
+    });
+
+    _socket!.connect();
+  }
+
+  void _handleTripAssignment(dynamic data) {
+    try {
+      final tripData = data is Map<String, dynamic> ? data : jsonDecode(data);
+      final trip = _parseTripFromBackend(tripData);
+
+      // Add trip if not already present
+      final existingIndex = _trips.indexWhere((t) => t.id == trip.id);
+      final isNewTrip = existingIndex == -1;
+
+      if (isNewTrip) {
+        _trips.add(trip);
+      } else {
+        _trips[existingIndex] = trip;
+      }
+
+      _saveTrips();
+      notifyListeners();
+
+      // Show push notification for new trip assignment
+      if (isNewTrip) {
+        final timeFormat = DateFormat('h:mm a');
+        NotificationService().showTripAssignedNotification(
+          tripId: trip.id,
+          pickupAddress: trip.pickupAddress,
+          pickupTime: timeFormat.format(trip.scheduledPickupTime),
+          memberName: tripData['member']?['firstName'] != null
+            ? '${tripData['member']['firstName']} ${tripData['member']['lastName'] ?? ''}'
+            : null,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error handling trip assignment: $e');
+    }
+  }
+
+  void _handleTripUpdate(dynamic data) {
+    try {
+      final tripData = data is Map<String, dynamic> ? data : jsonDecode(data);
+      final trip = _parseTripFromBackend(tripData);
+
+      final existingIndex = _trips.indexWhere((t) => t.id == trip.id);
+      if (existingIndex != -1) {
+        _trips[existingIndex] = trip;
+        _saveTrips();
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error handling trip update: $e');
+    }
+  }
+
+  void _handleTripCancellation(dynamic data) {
+    try {
+      final tripId = data is Map ? data['tripId'] : data;
+      final existingIndex = _trips.indexWhere((t) => t.id == tripId);
+      if (existingIndex != -1) {
+        final trip = _trips[existingIndex];
+        _trips[existingIndex] = trip.copyWith(
+          status: TripStatus.cancelled,
+          updatedAt: DateTime.now(),
+        );
+        _saveTrips();
+        notifyListeners();
+
+        // Show push notification for trip cancellation
+        final timeFormat = DateFormat('h:mm a');
+        NotificationService().showTripCancelledNotification(
+          tripId: trip.id,
+          pickupAddress: trip.pickupAddress,
+          pickupTime: timeFormat.format(trip.scheduledPickupTime),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error handling trip cancellation: $e');
+    }
+  }
+
+  TripModel _parseTripFromBackend(Map<String, dynamic> data) {
+    // Parse backend trip format to TripModel
+    return TripModel(
+      id: data['id'],
+      memberId: data['memberId'] ?? data['member']?['id'] ?? '',
+      driverId: data['driverId'],
+      vehicleId: data['vehicleId'],
+      tripType: _parseTripType(data['tripType']),
+      status: _parseTripStatus(data['status']),
+      scheduledPickupTime: DateTime.parse(data['scheduledPickupTime']),
+      actualPickupTime: data['actualPickupTime'] != null
+        ? DateTime.parse(data['actualPickupTime']) : null,
+      actualDropoffTime: data['actualDropoffTime'] != null
+        ? DateTime.parse(data['actualDropoffTime']) : null,
+      pickupAddress: data['pickupAddress'] ?? '',
+      pickupCity: data['pickupCity'] ?? '',
+      pickupState: data['pickupState'] ?? 'AZ',
+      pickupZip: data['pickupZip'] ?? '',
+      pickupLatitude: data['pickupLat']?.toDouble(),
+      pickupLongitude: data['pickupLng']?.toDouble(),
+      dropoffAddress: data['dropoffAddress'] ?? '',
+      dropoffCity: data['dropoffCity'] ?? '',
+      dropoffState: data['dropoffState'] ?? 'AZ',
+      dropoffZip: data['dropoffZip'] ?? '',
+      dropoffLatitude: data['dropoffLat']?.toDouble(),
+      dropoffLongitude: data['dropoffLng']?.toDouble(),
+      appointmentType: data['reasonForVisit'],
+      facilityName: data['facilityName'],
+      estimatedMiles: data['tripMiles']?.toDouble(),
+      authorizationNumber: data['authorizationNumber'] ?? 'N/A',
+      membershipId: data['member']?['ahcccsNumber'] ?? data['membershipId'] ?? '',
+      createdAt: data['createdAt'] != null
+        ? DateTime.parse(data['createdAt']) : DateTime.now(),
+      updatedAt: data['updatedAt'] != null
+        ? DateTime.parse(data['updatedAt']) : DateTime.now(),
+      pdfReportUrl: data['pdfURL'] ?? data['pdfReportUrl'], // Map from backend response
+    );
+  }
+
+  TripType _parseTripType(String? type) {
+    switch (type?.toLowerCase()) {
+      case 'round-trip':
+      case 'roundtrip':
+        return TripType.roundTrip;
+      case 'multiple-stops':
+      case 'multistop':
+        return TripType.multiStop;
+      default:
+        return TripType.oneWay;
+    }
+  }
+
+  TripStatus _parseTripStatus(String? status) {
+    switch (status?.toUpperCase()) {
+      case 'SCHEDULED':
+        return TripStatus.scheduled;
+      case 'ASSIGNED':
+        return TripStatus.assigned;
+      case 'EN_ROUTE':
+        return TripStatus.enRoute;
+      case 'ARRIVED':
+        return TripStatus.arrived;
+      case 'PICKED_UP':
+        return TripStatus.pickedUp;
+      case 'COMPLETED':
+        return TripStatus.completed;
+      case 'CANCELLED':
+        return TripStatus.cancelled;
+      case 'NO_SHOW':
+        return TripStatus.noShow;
+      default:
+        return TripStatus.scheduled;
+    }
+  }
+
+  /// Disconnect WebSocket
+  void disconnectSocket() {
+    _socket?.disconnect();
+    _socket?.dispose();
+    _socket = null;
+    _currentDriverId = null;
+  }
+
+  /// Emit trip status update via WebSocket
+  void _emitTripStatusUpdate(String tripId, TripStatus status, {
+    int? pickupOdometer,
+    int? dropoffOdometer,
+    String? driverSignature,
+    String? memberSignature,
+  }) {
+    if (_socket == null || _currentDriverId == null) return;
+
+    final payload = {
+      'tripId': tripId,
+      'status': _mapStatusToBackendString(status),
+      'driverId': _currentDriverId,
+      if (pickupOdometer != null) 'pickupOdometer': pickupOdometer,
+      if (dropoffOdometer != null) 'dropoffOdometer': dropoffOdometer,
+      if (status == TripStatus.pickedUp) 'actualPickupTime': DateTime.now().toIso8601String(),
+      if (status == TripStatus.completed) 'actualDropoffTime': DateTime.now().toIso8601String(),
+      if (driverSignature != null) 'driverSignatureUrl': driverSignature,
+      if (memberSignature != null) 'memberSignatureUrl': memberSignature,
+    };
+
+    _socket!.emit('tripStatusUpdate', payload);
+  }
+
+  String _mapStatusToBackendString(TripStatus status) {
+    switch (status) {
+      case TripStatus.enRoute:
+        return 'EN_ROUTE';
+      case TripStatus.pickedUp:
+        return 'PICKED_UP';
+      case TripStatus.noShow:
+        return 'NO_SHOW';
+      default:
+        return status.toString().split('.').last.toUpperCase();
+    }
+  }
+
+  /// Fetch trips from backend API
+  Future<void> fetchTripsFromBackend(String driverId) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final response = await http.get(
+        Uri.parse('$_baseUrl/trips?driverId=$driverId'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        _trips = data
+          .where((t) => t['driverId'] == driverId)
+          .map((t) => _parseTripFromBackend(t))
+          .toList();
+        await _saveTrips();
+      }
+    } catch (e) {
+      debugPrint('Error fetching trips from backend: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
   
   List<TripModel> getDriverTrips(String driverId) => _trips.where((t) => t.driverId == driverId).toList()..sort((a, b) => a.scheduledPickupTime.compareTo(b.scheduledPickupTime));
   
@@ -22,6 +326,19 @@ class TripService extends ChangeNotifier {
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));
     return _trips.where((t) => t.driverId == driverId && t.scheduledPickupTime.isAfter(today) && t.scheduledPickupTime.isBefore(tomorrow) && t.status != TripStatus.completed && t.status != TripStatus.cancelled).toList()..sort((a, b) => a.scheduledPickupTime.compareTo(b.scheduledPickupTime));
+  }
+
+  List<TripModel> getCompletedTripsForToday(String driverId) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    return _trips.where((t) => 
+      t.driverId == driverId && 
+      t.status == TripStatus.completed &&
+      // Check actual dropoff time first, then scheduled time as fallback
+      ((t.actualDropoffTime != null && t.actualDropoffTime!.isAfter(today) && t.actualDropoffTime!.isBefore(tomorrow)) || 
+       (t.scheduledPickupTime.isAfter(today) && t.scheduledPickupTime.isBefore(tomorrow)))
+    ).toList()..sort((a, b) => (b.actualDropoffTime ?? b.scheduledPickupTime).compareTo(a.actualDropoffTime ?? a.scheduledPickupTime));
   }
   
   List<TripModel> getUpcomingTrips(String driverId) {
@@ -220,7 +537,7 @@ class TripService extends ChangeNotifier {
         dropoffZip: '85054',
         appointmentType: 'Medical',
         facilityName: 'Mayo Clinic',
-        facilityPhone: '(480) 301-8000',
+        facilityPhone: '+1 480 910 6805',
         mobilityAid: member2.mobilityAid ?? 'wheelchair',
         requiresAttendant: true,
         attendantCount: 1,
@@ -266,24 +583,37 @@ class TripService extends ChangeNotifier {
   Future<void> startTrip(String tripId) async {
     final trip = _trips.firstWhere((t) => t.id == tripId);
     await updateTrip(trip.copyWith(status: TripStatus.enRoute));
+    _emitTripStatusUpdate(tripId, TripStatus.enRoute);
+    _updateTripOnBackend(tripId, {'status': 'EN_ROUTE'});
   }
-  
+
   Future<void> arriveAtPickup(String tripId) async {
     final trip = _trips.firstWhere((t) => t.id == tripId);
     await updateTrip(trip.copyWith(status: TripStatus.arrived));
+    _emitTripStatusUpdate(tripId, TripStatus.arrived);
+    _updateTripOnBackend(tripId, {'status': 'ARRIVED'});
   }
-  
-  Future<void> pickupMember(String tripId) async {
+
+  Future<void> pickupMember(String tripId, {int? pickupOdometer}) async {
     final trip = _trips.firstWhere((t) => t.id == tripId);
-    await updateTrip(trip.copyWith(status: TripStatus.pickedUp, actualPickupTime: DateTime.now()));
+    await updateTrip(trip.copyWith(
+      status: TripStatus.pickedUp,
+      actualPickupTime: DateTime.now(),
+    ));
+    _emitTripStatusUpdate(tripId, TripStatus.pickedUp, pickupOdometer: pickupOdometer);
+    _updateTripOnBackend(tripId, {
+      'status': 'PICKED_UP',
+      'actualPickupTime': DateTime.now().toIso8601String(),
+      if (pickupOdometer != null) 'pickupOdometer': pickupOdometer,
+    });
   }
-  
+
   Future<void> completeTrip(String tripId, {double? actualMiles, String? notes, String? driverSignature, String? memberSignature}) async {
     final trip = _trips.firstWhere((t) => t.id == tripId);
     final pickupTime = trip.actualPickupTime ?? DateTime.now();
     final dropoffTime = DateTime.now();
     final duration = dropoffTime.difference(pickupTime).inMinutes;
-    
+
     await updateTrip(trip.copyWith(
       status: TripStatus.completed,
       actualDropoffTime: dropoffTime,
@@ -293,15 +623,101 @@ class TripService extends ChangeNotifier {
       driverSignature: driverSignature,
       memberSignature: memberSignature,
     ));
+    _emitTripStatusUpdate(tripId, TripStatus.completed,
+      driverSignature: driverSignature,
+      memberSignature: memberSignature,
+    );
   }
-  
-  Future<void> cancelTrip(String tripId, String reason) async {
+
+  /// Complete trip with full AHCCCS Daily Trip Report data
+  Future<void> completeTripWithReport(
+    String tripId, {
+    int? pickupOdometer,
+    int? dropoffOdometer,
+    double? actualMiles,
+    String? reasonForVisit,
+    String? escortName,
+    String? escortRelationship,
+    String? driverSignature,
+    String? memberSignature,
+    String? notes,
+  }) async {
+    final trip = _trips.firstWhere((t) => t.id == tripId);
+    final pickupTime = trip.actualPickupTime ?? DateTime.now();
+    final dropoffTime = DateTime.now();
+    final duration = dropoffTime.difference(pickupTime).inMinutes;
+
+    // Calculate trip miles from odometer if not provided
+    final calculatedMiles = actualMiles ??
+      (pickupOdometer != null && dropoffOdometer != null
+        ? (dropoffOdometer - pickupOdometer).toDouble()
+        : null);
+
+    // Update local trip
+    await updateTrip(trip.copyWith(
+      status: TripStatus.completed,
+      actualDropoffTime: dropoffTime,
+      actualMiles: calculatedMiles,
+      actualDuration: duration,
+      notes: notes,
+      driverSignature: driverSignature,
+      memberSignature: memberSignature,
+    ));
+
+    // Emit WebSocket update
+    _emitTripStatusUpdate(
+      tripId,
+      TripStatus.completed,
+      pickupOdometer: pickupOdometer,
+      dropoffOdometer: dropoffOdometer,
+      driverSignature: driverSignature,
+      memberSignature: memberSignature,
+    );
+
+    // Update on backend - this triggers PDF generation and email
+    await _updateTripOnBackend(tripId, {
+      'status': 'COMPLETED',
+      'actualDropoffTime': dropoffTime.toIso8601String(),
+      if (pickupOdometer != null) 'pickupOdometer': pickupOdometer,
+      if (dropoffOdometer != null) 'dropoffOdometer': dropoffOdometer,
+      if (reasonForVisit != null) 'reasonForVisit': reasonForVisit,
+      if (escortName != null) 'escortName': escortName,
+      if (escortRelationship != null) 'escortRelationship': escortRelationship,
+      if (driverSignature != null) 'driverSignatureUrl': driverSignature,
+      if (memberSignature != null) 'memberSignatureUrl': memberSignature,
+      if (notes != null) 'notes': notes,
+    });
+  }
+
+  /// Update trip on backend via HTTP API
+  Future<void> _updateTripOnBackend(String tripId, Map<String, dynamic> data) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$_baseUrl/trips/$tripId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+
+      if (response.statusCode != 200) {
+        debugPrint('Failed to update trip on backend: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('Error updating trip on backend: $e');
+    }
+  }
+
+  Future<void> cancelTrip(String tripId, String reason, String description) async {
     final trip = _trips.firstWhere((t) => t.id == tripId);
     await updateTrip(trip.copyWith(
       status: TripStatus.cancelled,
       cancellationReason: reason,
       cancellationTime: DateTime.now(),
+      notes: 'CANCELLATION: $description',
     ));
+    _updateTripOnBackend(tripId, {
+      'status': 'CANCELLED',
+      'notes': 'CANCELLATION: $reason - $description',
+    });
   }
   
   TripModel? getTripById(String id) => _trips.firstWhere((t) => t.id == id, orElse: () => _trips.first);

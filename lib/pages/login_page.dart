@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:yazdrive/providers/app_init_provider.dart';
 import 'package:yazdrive/services/user_service.dart';
+import 'package:yazdrive/services/trip_service.dart';
+import 'package:yazdrive/services/location_service.dart';
 import 'package:yazdrive/theme.dart';
 
 class LoginPage extends StatefulWidget {
@@ -16,12 +18,14 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   String _selectedRole = 'driver';
   bool _isLoading = false;
 
   @override
   void dispose() {
     _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -41,14 +45,28 @@ class _LoginPageState extends State<LoginPage> {
     debugPrint('Attempting login with email: ${_emailController.text.trim()}, role: $_selectedRole');
     debugPrint('Available users: ${userService.users.map((u) => '${u.email} (${u.role})').join(', ')}');
     
-    final user = await userService.login(_emailController.text.trim(), _selectedRole);
+    final user = await userService.login(_emailController.text.trim(), _passwordController.text, _selectedRole);
 
     if (!mounted) return;
 
     if (user != null) {
       debugPrint('Login successful for user: ${user.firstName} ${user.lastName}');
+
+      // Initialize real-time services for drivers
       if (_selectedRole == 'driver') {
-        context.go('/driver/dashboard');
+        final tripService = context.read<TripService>();
+        final locationService = context.read<LocationService>();
+
+        // Initialize WebSocket connections
+        tripService.initializeSocketConnection(user.id);
+        locationService.initSocket(user.id);
+
+        // Fetch trips from backend
+        await tripService.fetchTripsFromBackend(user.id);
+
+        if (mounted) {
+          context.go('/driver/dashboard');
+        }
       } else if (_selectedRole == 'admin' || _selectedRole == 'dispatcher') {
         context.go('/admin/dashboard');
       }
@@ -119,6 +137,21 @@ class _LoginPageState extends State<LoginPage> {
                         return null;
                       },
                     ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _passwordController,
+                      decoration: const InputDecoration(
+                        labelText: 'Password',
+                        prefixIcon: Icon(Icons.lock_outline),
+                      ),
+                      obscureText: true,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your password';
+                        }
+                        return null;
+                      },
+                    ),
                     const SizedBox(height: 24),
                     Container(
                       decoration: BoxDecoration(
@@ -165,6 +198,11 @@ class _LoginPageState extends State<LoginPage> {
                           ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                           : const Text('Sign In'),
                     ),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () => context.push('/driver/apply'),
+                      child: const Text('New Driver? Apply Here'),
+                    ),
                     const SizedBox(height: 24),
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -184,9 +222,11 @@ class _LoginPageState extends State<LoginPage> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          Text('Driver: driver1@yazdrive.com', style: Theme.of(context).textTheme.bodySmall),
-                          Text('Dispatcher: dispatcher1@yazdrive.com', style: Theme.of(context).textTheme.bodySmall),
+                          Text('Driver: driver@yazdrive.com', style: Theme.of(context).textTheme.bodySmall),
+                          Text('Dispatcher: dispatch@yazdrive.com', style: Theme.of(context).textTheme.bodySmall),
                           Text('Admin: admin@yazdrive.com', style: Theme.of(context).textTheme.bodySmall),
+                          const SizedBox(height: 8),
+                          Text('Password: password123 (for all)', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ),

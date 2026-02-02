@@ -9,8 +9,9 @@ class AppColors {
   static const Color lightBackground = Color(0xFFFFFFFF);
   static const Color lightSurface = Color(0xFFF8FAFC);
   static const Color lightBorder = Color(0xFFE8EDF2);
-  
-  // Dark mode colors  
+  static const Color border = Color(0xFFE8EDF2); // Alias for lightBorder
+
+  // Dark mode colors
   static const Color darkBackground = Color(0xFF0F1419);
   static const Color darkSurface = Color(0xFF1A1F26);
   static const Color darkElevated = Color(0xFF1E2430);

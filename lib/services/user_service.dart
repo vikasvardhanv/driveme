@@ -15,7 +15,7 @@ class UserService extends ChangeNotifier {
    // Dynamic Base URL
   static String get _baseUrl {
     // Use production URL if needed, otherwise use local
-    const useProduction = bool.fromEnvironment('USE_PRODUCTION', defaultValue: false);
+    const useProduction = bool.fromEnvironment('USE_PRODUCTION', defaultValue: true);
 
     if (useProduction) {
       return 'https://driveme-backedn-production.up.railway.app';
@@ -62,12 +62,12 @@ class UserService extends ChangeNotifier {
     // Basic fallback data if needed
   }
   
-  Future<UserModel?> login(String email, String role) async {
+  Future<UserModel?> login(String email, String password, String role) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/auth/login'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'role': role}),
+        body: jsonEncode({'email': email, 'password': password, 'role': role.toUpperCase()}),
       );
 
       if (response.statusCode == 201 || response.statusCode == 200) {
@@ -118,5 +118,35 @@ class UserService extends ChangeNotifier {
     await prefs.remove(_currentUserKey);
     await prefs.remove(_tokenKey);
     notifyListeners();
+  }
+
+  /// Submit a new driver application
+  Future<bool> submitApplication({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String phone,
+    required String licenseNumber,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+    
+    try {
+      // Simulate API delay
+      await Future.delayed(const Duration(seconds: 2));
+      
+      // In a real app, this would POST to /api/driver/apply
+      // For now, we'll just simulate success
+      debugPrint('Application submitted for: $firstName $lastName');
+      
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('Error submitting application: $e');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
 }

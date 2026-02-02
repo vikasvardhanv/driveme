@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:yazdrive/theme.dart';
@@ -6,9 +7,26 @@ import 'package:yazdrive/services/user_service.dart';
 import 'package:yazdrive/services/trip_service.dart';
 import 'package:yazdrive/services/vehicle_service.dart';
 import 'package:yazdrive/services/location_service.dart';
+import 'package:yazdrive/services/notification_service.dart';
 import 'package:yazdrive/providers/app_init_provider.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize notification service (catch errors for platforms where it's not supported)
+  try {
+    await NotificationService().initialize(
+      onNotificationTap: (tripId) {
+        // Navigate to trip detail when notification is tapped
+        if (tripId != null) {
+          AppRouter.router.push('/driver/trip/$tripId');
+        }
+      },
+    );
+  } catch (e) {
+    debugPrint('NotificationService initialization failed (may need full rebuild): $e');
+  }
+
   runApp(const MyApp());
 }
 

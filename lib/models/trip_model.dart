@@ -61,6 +61,7 @@ class TripModel {
   final String? driverSignature;
   final String? memberSignature;
   final List<String>? photoDocumentation;
+  final String? pdfReportUrl; // Added
   final String? notes;
   
   final DateTime createdAt;
@@ -114,6 +115,7 @@ class TripModel {
     this.driverSignature,
     this.memberSignature,
     this.photoDocumentation,
+    this.pdfReportUrl, // Added
     this.notes,
     required this.createdAt,
     required this.updatedAt,
@@ -167,6 +169,7 @@ class TripModel {
     'driverSignature': driverSignature,
     'memberSignature': memberSignature,
     'photoDocumentation': photoDocumentation,
+    'pdfReportUrl': pdfReportUrl, // Added
     'notes': notes,
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
@@ -220,6 +223,7 @@ class TripModel {
     driverSignature: json['driverSignature'] as String?,
     memberSignature: json['memberSignature'] as String?,
     photoDocumentation: (json['photoDocumentation'] as List<dynamic>?)?.cast<String>(),
+    pdfReportUrl: json['pdfReportUrl'] as String?, // Added
     notes: json['notes'] as String?,
     createdAt: DateTime.parse(json['createdAt'] as String),
     updatedAt: DateTime.parse(json['updatedAt'] as String),
@@ -273,6 +277,7 @@ class TripModel {
     String? driverSignature,
     String? memberSignature,
     List<String>? photoDocumentation,
+    String? pdfReportUrl, // Added
     String? notes,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -324,6 +329,7 @@ class TripModel {
     driverSignature: driverSignature ?? this.driverSignature,
     memberSignature: memberSignature ?? this.memberSignature,
     photoDocumentation: photoDocumentation ?? this.photoDocumentation,
+    pdfReportUrl: pdfReportUrl ?? this.pdfReportUrl, // Added
     notes: notes ?? this.notes,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
