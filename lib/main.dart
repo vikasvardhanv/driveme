@@ -56,7 +56,7 @@ class MyApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp.router(
-        title: 'YazDrive',
+        title: 'Drivemeyaz',
         debugShowCheckedModeBanner: false,
         theme: lightTheme,
         darkTheme: darkTheme,

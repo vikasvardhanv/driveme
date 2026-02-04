@@ -101,7 +101,7 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
       backgroundColor: AppColors.lightBackground,
       drawer: const DriverDrawer(), // Add Drawer
       appBar: AppBar(
-        title: Text('DASHBOARD', style: GoogleFonts.inter(fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+        title: Text('OVERVIEW', style: GoogleFonts.inter(fontWeight: FontWeight.w700, letterSpacing: 0.5)),
         centerTitle: true,
         backgroundColor: AppColors.lightSurface,
         elevation: 0,
@@ -589,10 +589,10 @@ class _FilteredTripList extends StatelessWidget {
         ),
          child: Column(
            children: [
-             Icon(Icons.inbox_rounded, size: 48, color: AppColors.textDisabled),
+             Icon(Icons.assignment_outlined, size: 48, color: AppColors.textDisabled),
              const SizedBox(height: 16),
              Text(
-               'No trips found',
+               'No trip overview available',
                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
              ),
            ],

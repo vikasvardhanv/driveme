@@ -98,7 +98,7 @@ class _LoginPageState extends State<LoginPage> {
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
-                        color: AppColors.primary,
+                        color: Colors.white,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
@@ -108,7 +108,13 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ],
                       ),
-                      child: const Icon(Icons.local_hospital_rounded, size: 40, color: Colors.white),
+                      padding: const EdgeInsets.all(16),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                     const SizedBox(height: 32),
                     
@@ -265,33 +271,6 @@ class _LoginPageState extends State<LoginPage> {
                     ),
 
                     const SizedBox(height: 24),
-                    
-                    // Demo Credentials Box (Subtle)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.lightSurface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.lightBorder),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.terminal_rounded, size: 16, color: AppColors.textTertiary),
-                              const SizedBox(width: 8),
-                              Text('DEMO ACCESS', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textTertiary, letterSpacing: 0.5)),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          _DemoCredentialRow(label: 'Driver', email: 'driver@yazdrive.com'),
-                          _DemoCredentialRow(label: 'Dispatch', email: 'dispatch@yazdrive.com'),
-                          const Divider(height: 16),
-                          Text('Password for all: password123', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -412,35 +391,6 @@ class _RoleSelectionItem extends StatelessWidget {
             color: isSelected ? AppColors.textPrimary : AppColors.textTertiary,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _DemoCredentialRow extends StatelessWidget {
-  final String label;
-  final String email;
-
-  const _DemoCredentialRow({required this.label, required this.email});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 70,
-            child: Text(
-              '$label:', 
-              style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
-            ),
-          ),
-          Text(
-            email, 
-            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
-          ),
-        ],
       ),
     );
   }

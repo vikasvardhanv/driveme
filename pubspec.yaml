@@ -1,5 +1,5 @@
 name: yazdrive
-description: "YazDrive - A robust NEMT platform streamlining Arizona AHCCCS workflows, featuring live GPS tracking, comprehensive trip management, and automated compliance reporting for efficient non-emergency medical transportation."
+description: "Drivemeyaz - A robust NEMT platform streamlining Arizona AHCCCS workflows, featuring live GPS tracking, comprehensive trip management, and automated compliance reporting for efficient non-emergency medical transportation."
 publish_to: "none"
 version: 1.0.0
 
@@ -43,6 +43,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/
+    - assets/images/
 
 flutter_launcher_icons:
   android: true

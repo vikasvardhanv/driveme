@@ -357,126 +357,121 @@ class _VehicleConfirmationView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const SizedBox(height: 20),
           Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: AppColors.primaryContainer,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 8),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+            width: double.infinity,
+            color: const Color(0xFF5AC8E0), // Cyan-ish header color from screenshot
+            child: Text(
+              'CONFIRM VEHICLE',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                letterSpacing: 0.5,
+              ),
             ),
-            child: Icon(
-              vehicle.wheelchairAccessible 
-                  ? Icons.accessible_forward_rounded 
-                  : Icons.directions_car_rounded,
-              color: AppColors.primary,
-              size: 48,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Confirm Vehicle',
-            style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-          ),
-          Text(
-             'Is this the vehicle you are driving today?',
-             style: GoogleFonts.inter(fontSize: 16, color: AppColors.textSecondary),
-             textAlign: TextAlign.center,
           ),
           
           const SizedBox(height: 32),
           
+          Text(
+            '${vehicle.make} ${vehicle.model}',
+            style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${vehicle.year} ${vehicle.color}',
+            style: GoogleFonts.inter(fontSize: 20, color: AppColors.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+          
+          const SizedBox(height: 32),
+          Divider(color: Colors.grey.withOpacity(0.2), thickness: 1),
+          const SizedBox(height: 32),
+          
           Container(
             padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-              border: Border.all(color: AppColors.lightBorder),
-            ),
+            color: const Color(0xFFF2F2F2), // Light grey background
+            width: double.infinity,
             child: Column(
               children: [
-                _BigDetail(label: 'LICENSE PLATE', value: vehicle.licensePlate),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Divider(),
+                Text(
+                  'License plate: ${vehicle.licensePlate}',
+                  style: GoogleFonts.inter(fontSize: 18, color: AppColors.textSecondary),
                 ),
-                _GridDetail(
-                  leftLabel: 'Make / Model',
-                  leftValue: '${vehicle.make} ${vehicle.model}',
-                  rightLabel: 'Year',
-                  rightValue: '${vehicle.year}',
-                ),
-                const SizedBox(height: 24),
-                _GridDetail(
-                  leftLabel: 'Color',
-                  leftValue: vehicle.color,
-                  rightLabel: 'Type',
-                  rightValue: getTypeLabel(vehicle.type),
+                const SizedBox(height: 8),
+                Text(
+                  'Vehicle #: ${vehicle.id.substring(0, 8).toUpperCase()}', // Using ID as vehicle number for now
+                  style: GoogleFonts.inter(fontSize: 18, color: AppColors.textSecondary),
                 ),
                 
-                if (vehicle.wheelchairAccessible || vehicle.hasOxygen) ...[
-                   const SizedBox(height: 24),
-                   Row(
-                     children: [
-                       if (vehicle.wheelchairAccessible)
-                         Expanded(child: _FeatureBadge(icon: Icons.accessible_forward, label: 'Wheelchair', color: AppColors.primary)),
-                       if (vehicle.wheelchairAccessible && vehicle.hasOxygen)
-                         const SizedBox(width: 12),
-                       if (vehicle.hasOxygen)
-                         Expanded(child: _FeatureBadge(icon: Icons.medical_services_outlined, label: 'Oxygen', color: AppColors.secondary)),
-                     ],
-                   )
-                ]
+                const SizedBox(height: 32),
+                Container(height: 2, width: 40, color: Colors.grey),
+                const SizedBox(height: 32),
+                
+                Text(
+                  'SERVICING PRODUCT TYPES',
+                  style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF444444)),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      vehicle.wheelchairAccessible ? Icons.accessible_forward : Icons.person,
+                      size: 24,
+                      color: const Color(0xFF555555),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      vehicle.wheelchairAccessible ? 'Wheelchair & Ambulatory' : 'Ambulatory',
+                      style: GoogleFonts.inter(fontSize: 20, color: const Color(0xFF555555)),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
-          
+
           const SizedBox(height: 40),
           
-          // Swipe to Confirm (Simulated with Button for now, or Custom Widget)
+          // Confirm Button
           SizedBox(
             width: double.infinity,
-            height: 64,
+            height: 60,
             child: ElevatedButton(
               onPressed: onConfirm,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                elevation: 4,
-                shadowColor: AppColors.primary.withOpacity(0.4),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                backgroundColor: const Color(0xFF5AC8E0),
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'CONFIRM VEHICLE',
-                    style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: 0.5),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.arrow_forward_rounded, size: 24),
-                ],
+              child: Text(
+                'CONFIRM THIS VEHICLE',
+                style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
               ),
             ),
           ),
           
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           
-          TextButton(
-            onPressed: onWrongVehicle,
-            child: Text(
-              'Select a different vehicle',
-              style: GoogleFonts.inter(
-                color: AppColors.error,
-                fontWeight: FontWeight.w600,
-                fontSize: 16
+          // Wrong Vehicle Button
+          SizedBox(
+            width: double.infinity,
+            height: 60,
+            child: ElevatedButton(
+              onPressed: onWrongVehicle,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                elevation: 0,
+                side: const BorderSide(color: Color(0xFFDDDDDD)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              ),
+              child: Text(
+                'WRONG VEHICLE',
+                style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF555555)),
               ),
             ),
           ),
@@ -486,101 +481,4 @@ class _VehicleConfirmationView extends StatelessWidget {
   }
 }
 
-class _BigDetail extends StatelessWidget {
-  final String label;
-  final String value;
-  
-  const _BigDetail({required this.label, required this.value});
-  
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 1),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: GoogleFonts.inter(fontSize: 32, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-        ),
-      ],
-    );
-  }
-}
 
-class _GridDetail extends StatelessWidget {
-  final String leftLabel;
-  final String leftValue;
-  final String rightLabel;
-  final String rightValue;
-
-  const _GridDetail({
-    required this.leftLabel,
-    required this.leftValue,
-    required this.rightLabel,
-    required this.rightValue,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-               Text(leftLabel, style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
-               const SizedBox(height: 4),
-               Text(leftValue, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-            ],
-          ),
-        ),
-        Container(width: 1, height: 40, color: AppColors.lightBorder),
-        const SizedBox(width: 24),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-               Text(rightLabel, style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
-               const SizedBox(height: 4),
-               Text(rightValue, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FeatureBadge extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _FeatureBadge({required this.icon, required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: color),
-          ),
-        ],
-      ),
-    );
-  }
-}

@@ -196,12 +196,17 @@ class _DriverTripDetailPageState extends State<DriverTripDetailPage> {
         ),
         actions: [
           if (trip.status != TripStatus.completed && trip.status != TripStatus.cancelled)
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert_rounded),
-              onSelected: (value) {
-                if (value == 'cancel') _cancelTrip(tripService);
-              },
               itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'info',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline_rounded, color: AppColors.textSecondary, size: 20),
+                      const SizedBox(width: 12),
+                      Text('Trip Info', style: GoogleFonts.inter(color: AppColors.textPrimary)),
+                    ],
+                  ),
+                ),
                 PopupMenuItem(
                   value: 'cancel',
                   child: Row(
@@ -213,6 +218,35 @@ class _DriverTripDetailPageState extends State<DriverTripDetailPage> {
                   ),
                 ),
               ],
+              onSelected: (value) {
+                if (value == 'cancel') {
+                  _cancelTrip(tripService);
+                } else if (value == 'info') {
+                   showDialog(
+                     context: context,
+                     builder: (context) => AlertDialog(
+                       title: Text('Trip Details', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+                       content: Column(
+                         mainAxisSize: MainAxisSize.min,
+                         crossAxisAlignment: CrossAxisAlignment.start,
+                         children: [
+                           Text('Trip ID:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                           Text(trip.id, style: GoogleFonts.inter(fontFamily: 'Monospace')),
+                           const SizedBox(height: 12),
+                           Text('Full Pickup Address:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                           Text(trip.pickupAddress, style: GoogleFonts.inter()),
+                           const SizedBox(height: 12),
+                           Text('Full Dropoff Address:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                           Text(trip.dropoffAddress, style: GoogleFonts.inter()),
+                         ],
+                       ),
+                       actions: [
+                         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+                       ],
+                     ),
+                   );
+                }
+              },
             ),
         ],
       ),
@@ -610,7 +644,7 @@ class _ActionFooter extends StatelessWidget {
     switch (trip.status) {
       case TripStatus.scheduled:
       case TripStatus.assigned:
-        label = 'Swipe to Start Trip';
+        label = 'Begin Pickup';
         color = AppColors.primary;
         break;
       case TripStatus.enRoute:
