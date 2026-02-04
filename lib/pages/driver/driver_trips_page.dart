@@ -7,6 +7,9 @@ import 'package:yazdrive/services/trip_service.dart';
 import 'package:yazdrive/services/user_service.dart';
 import 'package:yazdrive/models/trip_model.dart';
 import 'package:yazdrive/theme.dart';
+import 'package:yazdrive/widgets/swipe_action_button.dart';
+import 'package:yazdrive/widgets/trip_instructions_modal.dart';
+import 'package:yazdrive/widgets/driver_drawer.dart';
 
 class DriverTripsPage extends StatefulWidget {
   const DriverTripsPage({super.key});
@@ -16,8 +19,6 @@ class DriverTripsPage extends StatefulWidget {
 }
 
 class _DriverTripsPageState extends State<DriverTripsPage> {
-  String _selectedFilter = 'All';
-
   @override
   Widget build(BuildContext context) {
     final tripService = context.watch<TripService>();
@@ -28,414 +29,287 @@ class _DriverTripsPageState extends State<DriverTripsPage> {
 
     final allTrips = tripService.trips;
     final myTrips = allTrips.where((t) => t.driverId == user.id || t.status == TripStatus.assigned).toList();
+    
+    // Sort: Active first, then scheduled
+    myTrips.sort((a, b) => a.scheduledPickupTime.compareTo(b.scheduledPickupTime));
+
+    final activeTripsCount = myTrips.where((t) => 
+      t.status == TripStatus.enRoute || t.status == TripStatus.arrived || t.status == TripStatus.pickedUp
+    ).length;
+    
+    // Filter completed trips for bottom section
+    final activeOrScheduled = myTrips.where((t) => t.status != TripStatus.completed && t.status != TripStatus.cancelled).toList();
+    final doneTrips = myTrips.where((t) => t.status == TripStatus.completed).toList();
 
     return Scaffold(
       backgroundColor: AppColors.lightBackground,
+      drawer: const DriverDrawer(),
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
+        title: Text('SCHEDULE', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 18, color: Colors.white, letterSpacing: 1.0)),
         centerTitle: true,
-        title: Text(
-          'My Trips',
-          style: GoogleFonts.inter(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(color: AppColors.lightBorder, height: 1),
-        ),
+        backgroundColor: AppColors.primary,
+        elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () => tripService.loadTrips(),
-          ),
+           TextButton(
+             onPressed: () => context.go('/driver/dashboard'),
+             child: Text('Overview', style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+          )
         ],
       ),
       body: Column(
         children: [
+          // Subheader
           Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: _TripFilterChips(
-              selectedFilter: _selectedFilter,
-              onFilterSelected: (filter) => setState(() => _selectedFilter = filter),
-              trips: myTrips,
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            color: AppColors.primaryDark,
+            child: Text(
+              'ACTIVE TRIPS: $activeTripsCount',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
             ),
           ),
-          Expanded(
-            child: myTrips.isEmpty
-                ? _EmptyState()
-                : _FilteredTripList(
-                    filter: _selectedFilter,
-                    trips: myTrips,
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.directions_car_outlined, size: 64, color: AppColors.textDisabled),
-          const SizedBox(height: 16),
-          Text(
-            'No trips assigned yet',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Your scheduled trips will appear here',
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: AppColors.textTertiary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TripFilterChips extends StatelessWidget {
-  final String selectedFilter;
-  final Function(String) onFilterSelected;
-  final List<TripModel> trips;
-
-  const _TripFilterChips({
-    required this.selectedFilter,
-    required this.onFilterSelected,
-    required this.trips,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final filters = ['All', 'Scheduled', 'Active', 'Done', 'Cancelled'];
-    
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: filters.map((filter) {
-          final isSelected = filter == selectedFilter;
-          final count = _getFilterCount(filter);
           
-          return Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: InkWell(
-              onTap: () => onFilterSelected(filter),
-              borderRadius: BorderRadius.circular(24),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primary : AppColors.lightSurface,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: isSelected ? AppColors.primary : AppColors.lightBorder,
+          Expanded(
+            child: ListView(
+              children: [
+                if (activeOrScheduled.isEmpty && doneTrips.isEmpty)
+                   Padding(
+                     padding: const EdgeInsets.all(32.0),
+                     child: Center(child: Text('No trips found', style: GoogleFonts.inter(color: AppColors.textSecondary))),
+                   ),
+
+                // Active/Scheduled List
+                ...activeOrScheduled.map((trip) => _ScheduleTripCard(trip: trip)),
+                
+                // Done Header
+                if (doneTrips.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    color: AppColors.lightSurfaceVariant,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      'Done Trips',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                    ),
                   ),
-                  boxShadow: isSelected 
-                      ? [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] 
-                      : null,
-                ),
-                child: Row(
+                  
+                // Done List
+                ...doneTrips.map((trip) => _DoneTripCard(trip: trip)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScheduleTripCard extends StatelessWidget {
+  final TripModel trip;
+
+  const _ScheduleTripCard({required this.trip});
+
+  Future<void> _handleBeginPickup(BuildContext context) async {
+    // Show trip instructions modal first
+    final confirmed = await TripInstructionsModal.show(context, trip);
+
+    if (confirmed && context.mounted) {
+      // Start the trip
+      final tripService = context.read<TripService>();
+      await tripService.startTrip(trip.id);
+
+      // Navigate to trip detail page
+      if (context.mounted) {
+        context.push('/driver/trip/${trip.id}');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dateFormat = DateFormat('hh:mm a');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 1),
+      decoration: BoxDecoration(
+        color: AppColors.lightSurface,
+        border: Border(bottom: BorderSide(color: AppColors.lightBorder)),
+      ),
+      child: Column(
+        children: [
+          // Begin Pickup Swipe Button
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: SwipeActionButton(
+              text: 'BEGIN PICKUP',
+              color: AppColors.primary,
+              icon: Icons.double_arrow_rounded,
+              onSwipeComplete: () => _handleBeginPickup(context),
+            ),
+          ),
+
+          // Trip Info
+          Container(
+            color: AppColors.lightSurface,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      filter,
+                    Row(
+                      children: [
+                        const Icon(Icons.person, color: AppColors.primary, size: 24),
+                        const SizedBox(width: 8),
+                         // Member Name - TODO: Get from member data
+                        Text(
+                          'Member',
+                          style: GoogleFonts.inter(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    PopupMenuButton<String>(
+                      icon: Icon(Icons.more_horiz, color: AppColors.textTertiary),
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'info',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.info_outline_rounded, color: AppColors.textSecondary, size: 20),
+                              const SizedBox(width: 12),
+                              Text('Trip Info', style: GoogleFonts.inter(color: AppColors.textPrimary)),
+                            ],
+                          ),
+                        ),
+                      ],
+                      onSelected: (value) {
+                        if (value == 'info') {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: Text('Trip Details', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Trip ID:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                                  Text(trip.id, style: GoogleFonts.robotoMono(fontWeight: FontWeight.w500)),
+                                  const SizedBox(height: 12),
+                                  Text('Scheduled Pickup:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                                  Text(dateFormat.format(trip.scheduledPickupTime), style: GoogleFonts.inter()),
+                                  const SizedBox(height: 12),
+                                  Text('Full Pickup Address:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                                  Text(trip.pickupAddress, style: GoogleFonts.inter()),
+                                  const SizedBox(height: 12),
+                                  Text('Full Dropoff Address:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                                  Text(trip.dropoffAddress, style: GoogleFonts.inter()),
+                                ],
+                              ),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+                              ],
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 32),
+                    child: Text(
+                      'Member #${trip.memberId.length >= 8 ? trip.memberId.substring(0, 8) : trip.memberId}',
                       style: GoogleFonts.inter(
                         fontSize: 14,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                        color: isSelected ? Colors.white : AppColors.textSecondary,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                     const SizedBox(width: 6),
-                     Container(
-                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                       decoration: BoxDecoration(
-                         color: isSelected ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.05),
-                         borderRadius: BorderRadius.circular(10),
-                       ),
-                       child: Text(
-                         '$count',
-                         style: GoogleFonts.inter(
-                           fontSize: 12,
-                           fontWeight: FontWeight.w700,
-                           color: isSelected ? Colors.white : AppColors.textSecondary,
-                         ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Address
+                Row(
+                  children: [
+                     const Icon(Icons.location_on, color: AppColors.textTertiary, size: 24),
+                     const SizedBox(width: 8),
+                     Expanded(
+                       child: Column(
+                         crossAxisAlignment: CrossAxisAlignment.start,
+                         children: [
+                           Text(
+                             trip.pickupAddress,
+                             style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                             maxLines: 1, overflow: TextOverflow.ellipsis,
+                           ),
+                           const SizedBox(height: 4),
+                           Text(
+                             'Pickup: ${dateFormat.format(trip.scheduledPickupTime)}',
+                             style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
+                           ),
+                         ],
                        ),
                      ),
                   ],
                 ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  int _getFilterCount(String filter) {
-    switch (filter) {
-      case 'All': return trips.length;
-      case 'Scheduled': return trips.where((t) => t.status == TripStatus.scheduled || t.status == TripStatus.assigned).length;
-      case 'Active': return trips.where((t) => t.status == TripStatus.enRoute || t.status == TripStatus.arrived || t.status == TripStatus.pickedUp).length;
-      case 'Done': return trips.where((t) => t.status == TripStatus.completed).length;
-      case 'Cancelled': return trips.where((t) => t.status == TripStatus.cancelled || t.status == TripStatus.noShow).length;
-      default: return 0;
-    }
-  }
-}
-
-class _FilteredTripList extends StatelessWidget {
-  final String filter;
-  final List<TripModel> trips;
-
-  const _FilteredTripList({required this.filter, required this.trips});
-
-  List<TripModel> get _filteredTrips {
-    switch (filter) {
-      case 'Scheduled':
-        return trips.where((t) => t.status == TripStatus.scheduled || t.status == TripStatus.assigned).toList();
-      case 'Active':
-        return trips.where((t) => t.status == TripStatus.enRoute || t.status == TripStatus.arrived || t.status == TripStatus.pickedUp).toList();
-      case 'Done':
-        return trips.where((t) => t.status == TripStatus.completed).toList();
-      case 'Cancelled':
-        return trips.where((t) => t.status == TripStatus.cancelled || t.status == TripStatus.noShow).toList();
-      default: return trips;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final filtered = _filteredTrips;
-    
-    filtered.sort((a, b) {
-      if (filter == 'Done' || filter == 'Cancelled') {
-        return b.scheduledPickupTime.compareTo(a.scheduledPickupTime);
-      }
-      return a.scheduledPickupTime.compareTo(b.scheduledPickupTime);
-    });
-
-    if (filtered.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.filter_list_off, size: 48, color: AppColors.textDisabled),
-            const SizedBox(height: 16),
-            Text(
-              'No $filter trips found',
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: filtered.length,
-      itemBuilder: (context, index) {
-        return _TripCard(trip: filtered[index]);
-      },
-    );
-  }
-}
-
-class _TripCard extends StatelessWidget {
-  final TripModel trip;
-
-  const _TripCard({required this.trip});
-
-  @override
-  Widget build(BuildContext context) {
-    final timeFormat = DateFormat('h:mm a');
-    final dateFormat = DateFormat('MMM d');
-    final isUpcoming = trip.scheduledPickupTime.isAfter(DateTime.now());
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(color: AppColors.lightBorder),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          onTap: () => context.push('/driver/trip/${trip.id}'),
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor().withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: _getStatusColor().withOpacity(0.2)),
-                      ),
-                      child: Text(
-                        trip.status.toString().split('.').last.toUpperCase(),
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: _getStatusColor(),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    Icon(Icons.calendar_today_outlined, size: 14, color: AppColors.textSecondary),
-                    const SizedBox(width: 4),
-                    Text(
-                      dateFormat.format(trip.scheduledPickupTime),
-                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
-                    ),
-                    const SizedBox(width: 12),
-                    Icon(Icons.access_time_rounded, size: 14, color: AppColors.textPrimary),
-                    const SizedBox(width: 4),
-                    Text(
-                      timeFormat.format(trip.scheduledPickupTime),
-                      style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-                    ),
-                  ],
-                ),
-                
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Divider(height: 1, color: AppColors.lightBorder),
-                ),
-
-                // Pickup
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Column(
-                      children: [
-                        const Icon(Icons.circle, size: 12, color: AppColors.primary),
-                        Container(width: 2, height: 28, color: AppColors.lightBorder),
-                      ],
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('PICKUP', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textTertiary, letterSpacing: 0.5)),
-                          const SizedBox(height: 2),
-                          Text(trip.pickupAddress, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                
-                // Dropoff
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(Icons.location_on, size: 12, color: AppColors.secondary),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('DROPOFF', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textTertiary, letterSpacing: 0.5)),
-                          const SizedBox(height: 2),
-                          Text(trip.dropoffAddress, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Footer Info
-                if (trip.notes != null || trip.wheelchairRequired) ...[
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      if (trip.wheelchairRequired)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: Icon(Icons.accessible_forward, size: 16, color: AppColors.textSecondary),
-                        ),
-                      if (trip.notes != null)
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Icon(Icons.notes, size: 16, color: AppColors.textTertiary),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  trip.notes!, 
-                                  maxLines: 1, 
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
+                const SizedBox(height: 16),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }
+}
 
-  Color _getStatusColor() {
-    switch (trip.status) {
-      case TripStatus.scheduled:
-      case TripStatus.assigned:
-        return AppColors.info;
-      case TripStatus.enRoute:
-      case TripStatus.arrived:
-      case TripStatus.pickedUp:
-        return AppColors.primary;
-      case TripStatus.completed:
-        return AppColors.success;
-      case TripStatus.cancelled:
-      case TripStatus.noShow:
-        return AppColors.error;
-      default:
-        return AppColors.textSecondary;
-    }
+class _DoneTripCard extends StatelessWidget {
+  final TripModel trip;
+
+  const _DoneTripCard({required this.trip});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      color: AppColors.lightSurfaceVariant, 
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle, color: AppColors.success, size: 24),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              RichText(
+                 text: TextSpan(
+                   children: [
+                     TextSpan(
+                       text: 'Trip Done: ',
+                       style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary), 
+                     ),
+                     TextSpan(
+                       text: 'G. MEMBER',
+                       style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
+                     ),
+                   ],
+                 ),
+              ),
+              Text(
+                'Trip #${trip.id.length >= 7 ? trip.id.substring(0, 7) : trip.id}',
+                style: GoogleFonts.inter(fontSize: 12, color: AppColors.textTertiary),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

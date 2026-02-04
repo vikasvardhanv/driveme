@@ -196,6 +196,8 @@ class _DriverTripDetailPageState extends State<DriverTripDetailPage> {
         ),
         actions: [
           if (trip.status != TripStatus.completed && trip.status != TripStatus.cancelled)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert_rounded),
               itemBuilder: (context) => [
                 PopupMenuItem(
                   value: 'info',
@@ -231,7 +233,7 @@ class _DriverTripDetailPageState extends State<DriverTripDetailPage> {
                          crossAxisAlignment: CrossAxisAlignment.start,
                          children: [
                            Text('Trip ID:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-                           Text(trip.id, style: GoogleFonts.inter(fontFamily: 'Monospace')),
+                           Text(trip.id, style: GoogleFonts.robotoMono(fontWeight: FontWeight.w500)),
                            const SizedBox(height: 12),
                            Text('Full Pickup Address:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
                            Text(trip.pickupAddress, style: GoogleFonts.inter()),

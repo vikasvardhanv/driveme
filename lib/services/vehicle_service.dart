@@ -45,15 +45,16 @@ class VehicleService extends ChangeNotifier {
   Future<void> loadVehicles() async {
     _isLoading = true;
     notifyListeners();
-    
+
     try {
       // Try to fetch from API
       try {
+        debugPrint('Attempting to fetch vehicles from API: ${_apiService.toString()}');
         final List<dynamic> data = await _apiService.get('/vehicles');
+        debugPrint('Successfully fetched ${data.length} vehicles from API');
         _vehicles = data.map((json) {
-           // Ensure the backend response matches VehicleModel expectations
-           // If backend returns different specific fields, map them here.
-           // For now assuming direct mapping + some defaults for missing fields
+           // Map backend response to VehicleModel
+           // Backend uses: wheelchairAccessible, oxygenCapable, currentOdometer
            return VehicleModel(
              id: json['id'] ?? '',
              make: json['make'] ?? 'Unknown',
@@ -61,45 +62,55 @@ class VehicleService extends ChangeNotifier {
              year: json['year'] ?? 2020,
              licensePlate: json['licensePlate'] ?? '',
              vin: json['vin'] ?? '',
-             color: json['color'] ?? 'Unknown',
-             // Map backend 'vehicleType' to enum if needed, defaulting for now
+             color: json['color'] ?? 'Not Specified',
              type: _parseVehicleType(json['vehicleType']),
              capacity: json['capacity'] ?? 4,
              wheelchairAccessible: json['wheelchairAccessible'] ?? false,
-             hasOxygen: json['hasOxygen'] ?? false,
+             hasOxygen: json['oxygenCapable'] ?? false,  // Backend uses 'oxygenCapable'
              isActive: json['isActive'] ?? true,
-             currentMileage: json['currentMileage'] ?? 0,
-             lastMaintenance: json['lastMaintenance'] != null ? DateTime.parse(json['lastMaintenance']) : DateTime.now(),
-             nextMaintenanceDue: json['nextMaintenanceDue'] != null ? DateTime.parse(json['nextMaintenanceDue']) : DateTime.now().add(const Duration(days: 90)),
+             currentMileage: json['currentOdometer'] ?? 0,  // Backend uses 'currentOdometer'
+             lastMaintenance: json['lastMaintenance'] != null ? DateTime.parse(json['lastMaintenance']) : DateTime.now().subtract(const Duration(days: 30)),
+             nextMaintenanceDue: json['nextMaintenanceDue'] != null ? DateTime.parse(json['nextMaintenanceDue']) : DateTime.now().add(const Duration(days: 60)),
              insuranceProvider: json['insuranceProvider'] ?? '',
              insurancePolicyNumber: json['insurancePolicyNumber'] ?? '',
              insuranceExpiry: json['insuranceExpiry'] != null ? DateTime.parse(json['insuranceExpiry']) : DateTime.now().add(const Duration(days: 365)),
              registrationExpiry: json['registrationExpiry'] != null ? DateTime.parse(json['registrationExpiry']) : DateTime.now().add(const Duration(days: 365)),
              registrationState: json['registrationState'] ?? 'AZ',
-             lastInspection: json['lastInspection'] != null ? DateTime.parse(json['lastInspection']) : DateTime.now(),
-             nextInspectionDue: json['nextInspectionDue'] != null ? DateTime.parse(json['nextInspectionDue']) : DateTime.now().add(const Duration(days: 365)),
+             lastInspection: json['lastInspection'] != null ? DateTime.parse(json['lastInspection']) : DateTime.now().subtract(const Duration(days: 60)),
+             nextInspectionDue: json['nextInspectionDue'] != null ? DateTime.parse(json['nextInspectionDue']) : DateTime.now().add(const Duration(days: 305)),
              createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
-             updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : DateTime.now(),
+             updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : DateTime.parse(json['updatedAt']),
            );
         }).toList();
-        
+
         // Save to local storage for offline fallback
         await _saveVehicles();
-        
+
       } catch (e) {
-        debugPrint('API Error loading vehicles, falling back to cache: \$e');
+        debugPrint('API Error loading vehicles: $e');
+        debugPrint('Error details: ${e.runtimeType}');
+        if (e.toString().isNotEmpty) {
+          debugPrint('Full error message: ${e.toString()}');
+        }
         // Fallback to local storage
         final prefs = await SharedPreferences.getInstance();
         final String? vehiclesJson = prefs.getString(_storageKey);
-        
+
         if (vehiclesJson != null) {
+          debugPrint('Loading vehicles from cache');
           final List<dynamic> decoded = jsonDecode(vehiclesJson);
           _vehicles = decoded.map((json) => VehicleModel.fromJson(json as Map<String, dynamic>)).toList();
+          debugPrint('Loaded ${_vehicles.length} vehicles from cache');
+        } else {
+          debugPrint('No vehicles available - backend API unavailable and no cache found');
+          _vehicles = [];
         }
       }
     } catch (e) {
-      debugPrint('Failed to load vehicles completely: \$e');
+      debugPrint('Failed to load vehicles: \$e');
+      _vehicles = [];
     } finally {
+      debugPrint('Total vehicles available: ${_vehicles.length}');
       _isLoading = false;
       notifyListeners();
     }

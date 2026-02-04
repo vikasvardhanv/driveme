@@ -55,7 +55,7 @@ class _LoginPageState extends State<LoginPage> {
         locationService.initSocket(user.id);
         await tripService.fetchTripsFromBackend(user.id);
 
-        if (mounted) context.go('/driver/dashboard');
+        if (mounted) context.go('/driver/vehicle-confirmation');
       } else if (_selectedRole == 'admin' || _selectedRole == 'dispatcher') {
         context.go('/admin/dashboard');
       }
@@ -110,7 +110,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       padding: const EdgeInsets.all(16),
                       child: Image.asset(
-                        'assets/images/logo.png',
+                        'assets/images/drivemeyaz.jpeg',
                         width: 48,
                         height: 48,
                         fit: BoxFit.contain,

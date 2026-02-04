@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:yazdrive/services/user_service.dart';
 import 'package:yazdrive/services/vehicle_service.dart';
 import 'package:yazdrive/theme.dart';
+import 'package:yazdrive/constants.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class DriverDrawer extends StatelessWidget {
   const DriverDrawer({super.key});
@@ -67,9 +69,21 @@ class DriverDrawer extends StatelessWidget {
                   icon: Icons.campaign, // Report Accident (Megaphone-ish)
                   text: 'Report an Accident',
                   color: Colors.teal[300]!,
-                  onTap: () {
+                  onTap: () async {
                     context.pop();
-                    _showComingSoon(context, 'Report an Accident');
+                    final Uri launchUri = Uri(
+                      scheme: 'tel',
+                      path: AppConstants.driverHotline,
+                    );
+                    if (await canLaunchUrl(launchUri)) {
+                      await launchUrl(launchUri);
+                    } else {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Could not launch dialer')),
+                        );
+                      }
+                    }
                   },
                 ),
                 _DrawerItem(
@@ -89,9 +103,15 @@ class DriverDrawer extends StatelessWidget {
                   icon: Icons.help_outline,
                   text: 'Help',
                   color: Colors.cyan[300]!,
-                  onTap: () {
+                  onTap: () async {
                     context.pop();
-                    _showComingSoon(context, 'Help');
+                     final Uri launchUri = Uri(
+                      scheme: 'tel',
+                      path: AppConstants.generalPhoneNumber,
+                    );
+                    if (await canLaunchUrl(launchUri)) {
+                      await launchUrl(launchUri);
+                    }
                   },
                 ),
                 const Divider(color: Colors.white24, height: 1),
@@ -101,7 +121,7 @@ class DriverDrawer extends StatelessWidget {
                   color: Colors.cyan[300]!,
                   onTap: () {
                     context.pop();
-                    _showComingSoon(context, 'Driver Handbook');
+                    context.pushNamed('driver_handbook');
                   },
                 ),
                 const Divider(color: Colors.white24, height: 1),

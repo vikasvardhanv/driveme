@@ -43,3 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# iOS/macOS build artifacts
+ios/build/
+ios/DerivedData/
+macos/build/
+macos/DerivedData/

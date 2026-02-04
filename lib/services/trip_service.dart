@@ -205,7 +205,7 @@ class TripService extends ChangeNotifier {
       membershipId: data['member']?['ahcccsNumber'] ?? data['membershipId'] ?? '',
       createdAt: data['createdAt'] != null
         ? DateTime.parse(data['createdAt']) : DateTime.now(),
-      updatedAt: data['updatedAt'] != null
+      updatedAt: data['updatedAt'] != null 
         ? DateTime.parse(data['updatedAt']) : DateTime.now(),
       pdfReportUrl: data['pdfURL'] ?? data['pdfReportUrl'], // Map from backend response
     );

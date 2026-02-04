@@ -661,7 +661,20 @@ class _TripCard extends StatelessWidget {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          onTap: () => context.push('/driver/trip/${trip.id}'),
+          onTap: () {
+            final vehicleService = context.read<VehicleService>();
+            if (vehicleService.selectedVehicle == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please select a vehicle to start taking trips'),
+                  backgroundColor: AppColors.error,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              return;
+            }
+            context.push('/driver/trip/${trip.id}');
+          },
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -774,7 +787,20 @@ class _ActiveTripCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => context.push('/driver/trip/${trip.id}'),
+          onTap: () {
+            final vehicleService = context.read<VehicleService>();
+            if (vehicleService.selectedVehicle == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please select a vehicle to resume your trip'),
+                  backgroundColor: AppColors.error,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              return;
+            }
+            context.push('/driver/trip/${trip.id}');
+          },
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(20),

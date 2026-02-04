@@ -5,13 +5,13 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  // Use production URL
-  static const String _productionUrl = 'https://driveme-backedn-production.up.railway.app';
-  
+  // Use production URL (Coolify deployment)
+  static const String _productionUrl = 'https://backend.yaztrans.com';
+
   static String get baseUrl {
     // Override for development if needed, but default to production as requested
     const bool useProduction = true;
-    
+
     if (useProduction) return _productionUrl;
 
     if (kIsWeb) return 'http://localhost:3000';
@@ -32,15 +32,20 @@ class ApiService {
 
   Future<dynamic> get(String endpoint) async {
     try {
+      final url = '$baseUrl$endpoint';
+      debugPrint('API GET: $url');
       final headers = await _getHeaders();
+      debugPrint('Headers: $headers');
       final response = await http.get(
-        Uri.parse('\$baseUrl\$endpoint'),
+        Uri.parse(url),
         headers: headers,
       );
-      
+      debugPrint('Response status: ${response.statusCode}');
+
       return _handleResponse(response);
     } catch (e) {
-      throw Exception('Network error: \$e');
+      debugPrint('API GET error for $endpoint: $e');
+      throw Exception('Network error: $e');
     }
   }
 
