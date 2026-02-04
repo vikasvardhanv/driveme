@@ -188,6 +188,12 @@
       "languageVersion": "3.1"
     },
     {
+      "name": "flutter_map",
+      "rootUri": "file:///Users/vikashvardhan/.pub-cache/hosted/pub.dev/flutter_map-6.2.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    },
+    {
       "name": "flutter_plugin_android_lifecycle",
       "rootUri": "file:///Users/vikashvardhan/.pub-cache/hosted/pub.dev/flutter_plugin_android_lifecycle-2.0.31",
       "packageUri": "lib/",
@@ -380,6 +386,12 @@
       "languageVersion": "3.0"
     },
     {
+      "name": "latlong2",
+      "rootUri": "file:///Users/vikashvardhan/.pub-cache/hosted/pub.dev/latlong2-0.9.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    },
+    {
       "name": "leak_tracker",
       "rootUri": "file:///Users/vikashvardhan/.pub-cache/hosted/pub.dev/leak_tracker-11.0.2",
       "packageUri": "lib/",
@@ -402,6 +414,18 @@
       "rootUri": "file:///Users/vikashvardhan/.pub-cache/hosted/pub.dev/lints-5.1.1",
       "packageUri": "lib/",
       "languageVersion": "3.6"
+    },
+    {
+      "name": "lists",
+      "rootUri": "file:///Users/vikashvardhan/.pub-cache/hosted/pub.dev/lists-1.0.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
+      "name": "logger",
+      "rootUri": "file:///Users/vikashvardhan/.pub-cache/hosted/pub.dev/logger-2.6.2",
+      "packageUri": "lib/",
+      "languageVersion": "2.17"
     },
     {
       "name": "logging",
@@ -432,6 +456,12 @@
       "rootUri": "file:///Users/vikashvardhan/.pub-cache/hosted/pub.dev/meta-1.17.0",
       "packageUri": "lib/",
       "languageVersion": "3.5"
+    },
+    {
+      "name": "mgrs_dart",
+      "rootUri": "file:///Users/vikashvardhan/.pub-cache/hosted/pub.dev/mgrs_dart-2.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
     },
     {
       "name": "mime",
@@ -524,10 +554,22 @@
       "languageVersion": "3.0"
     },
     {
+      "name": "polylabel",
+      "rootUri": "file:///Users/vikashvardhan/.pub-cache/hosted/pub.dev/polylabel-1.0.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.13"
+    },
+    {
       "name": "printing",
       "rootUri": "file:///Users/vikashvardhan/.pub-cache/hosted/pub.dev/printing-5.14.2",
       "packageUri": "lib/",
       "languageVersion": "3.3"
+    },
+    {
+      "name": "proj4dart",
+      "rootUri": "file:///Users/vikashvardhan/.pub-cache/hosted/pub.dev/proj4dart-2.1.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
     },
     {
       "name": "provider",
@@ -674,6 +716,12 @@
       "languageVersion": "3.5"
     },
     {
+      "name": "unicode",
+      "rootUri": "file:///Users/vikashvardhan/.pub-cache/hosted/pub.dev/unicode-0.3.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
       "name": "url_launcher",
       "rootUri": "file:///Users/vikashvardhan/.pub-cache/hosted/pub.dev/url_launcher-6.3.2",
       "packageUri": "lib/",
@@ -750,6 +798,12 @@
       "rootUri": "file:///Users/vikashvardhan/.pub-cache/hosted/pub.dev/win32-5.15.0",
       "packageUri": "lib/",
       "languageVersion": "3.8"
+    },
+    {
+      "name": "wkt_parser",
+      "rootUri": "file:///Users/vikashvardhan/.pub-cache/hosted/pub.dev/wkt_parser-2.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
     },
     {
       "name": "xdg_directories",

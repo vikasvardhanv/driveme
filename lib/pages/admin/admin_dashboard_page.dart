@@ -23,8 +23,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final tripService = context.read<TripService>();
       final vehicleService = context.read<VehicleService>();
+      final userService = context.read<UserService>();
       tripService.loadTrips();
       vehicleService.loadVehicles();
+      userService.fetchDrivers();
     });
   }
 

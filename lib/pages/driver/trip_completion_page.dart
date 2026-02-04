@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:yazdrive/services/trip_service.dart';
 import 'package:yazdrive/services/user_service.dart';
 import 'package:yazdrive/services/vehicle_service.dart';
@@ -9,9 +10,6 @@ import 'package:yazdrive/theme.dart';
 import 'package:yazdrive/widgets/signature_capture_widget.dart';
 import 'package:yazdrive/services/azuga_service.dart';
 
-/// AHCCCS Daily Trip Report Completion Page
-/// This page captures all required information for the AHCCCS Daily Trip Report
-/// including odometer readings, signatures, and auto-fills known information.
 class TripCompletionPage extends StatefulWidget {
   final String tripId;
 
@@ -51,7 +49,6 @@ class _TripCompletionPageState extends State<TripCompletionPage> {
     if (trip != null) {
       _reasonForVisitController.text = trip.appointmentType ?? '';
       
-      // Fetch Azuga Telematics
       setState(() => _isFetchingTelematics = true);
       
       try {
@@ -62,20 +59,18 @@ class _TripCompletionPageState extends State<TripCompletionPage> {
         );
 
         if (mounted) {
-          // Simulate a starting odometer (e.g., last known or 10000)
           const startOdo = 12450; 
           _pickupOdometerController.text = startOdo.toString();
           _dropoffOdometerController.text = (startOdo + telematics.actualMiles).round().toString();
           
-          setState(() {
-            _azugaDataLoaded = true;
-          });
+          setState(() => _azugaDataLoaded = true);
           
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Trip data auto-filled from Azuga Telematics'),
-              backgroundColor: Colors.blue,
-              duration: Duration(seconds: 2),
+            SnackBar(
+              content: const Text('Trip data auto-filled from Azuga Telematics'),
+              backgroundColor: AppColors.primary,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           );
         }
@@ -127,7 +122,6 @@ class _TripCompletionPageState extends State<TripCompletionPage> {
       final pickupOdometer = int.tryParse(_pickupOdometerController.text);
       final dropoffOdometer = int.tryParse(_dropoffOdometerController.text);
 
-      // Complete the trip with all AHCCCS required data
       await tripService.completeTripWithReport(
         widget.tripId,
         pickupOdometer: pickupOdometer,
@@ -141,32 +135,21 @@ class _TripCompletionPageState extends State<TripCompletionPage> {
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
       );
 
-      if (mounted) {
-        _showSuccess();
-      }
+      if (mounted) _showSuccess();
     } catch (e) {
-      if (mounted) {
-        _showError('Failed to submit trip report: $e');
-      }
+      if (mounted) _showError('Failed to submit trip report: $e');
     } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error, color: Colors.white),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message)),
-          ],
-        ),
+        content: Text(message),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -176,34 +159,21 @@ class _TripCompletionPageState extends State<TripCompletionPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        icon: Icon(Icons.check_circle, color: AppColors.success, size: 64),
-        title: const Text('Trip Completed!'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'AHCCCS Daily Trip Report has been submitted successfully.',
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 12),
-            Text(
-              'The report will be emailed to your NEMT provider.',
-              style: TextStyle(color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-          ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        icon: const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 64),
+        title: Text('Report Submitted', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+        content: Text(
+          'AHCCCS Daily Trip Report has been successfully filed.',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(),
         ),
         actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context); // Close dialog
-              context.go('/driver/schedule'); // Return to schedule
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.success,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Done'),
+          TextButton(
+             onPressed: () {
+               Navigator.pop(context);
+               context.go('/driver/dashboard'); // Back to dashboard usually
+             },
+             child: Text('Done', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.primary)),
           ),
         ],
       ),
@@ -231,432 +201,126 @@ class _TripCompletionPageState extends State<TripCompletionPage> {
     final timeFormat = DateFormat('h:mm a');
 
     return Scaffold(
+      backgroundColor: AppColors.lightBackground,
       appBar: AppBar(
-        title: const Text('AHCCCS Daily Trip Report'),
+        title: Text('Trip Report', style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+        backgroundColor: Colors.white,
+        elevation: 0,
         centerTitle: true,
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+         bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: AppColors.lightBorder, height: 1),
+        ),
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           children: [
-            // Header
+            // Status Header
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                color: AppColors.primary.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.primary.withOpacity(0.2)),
               ),
               child: Column(
                 children: [
-                  const Icon(Icons.description, size: 40, color: AppColors.primary),
-                  const SizedBox(height: 8),
-                  Text(
-                    'AHCCCS Daily Trip Report',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  if (_isFetchingTelematics)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 8.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)),
-                          SizedBox(width: 8),
-                          Text('Syncing with Azuga...'),
-                        ],
-                      ),
-                    )
-                  else if (_azugaDataLoaded)
-                     Container(
-                      margin: const EdgeInsets.only(top: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blue),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.cloud_sync, size: 16, color: Colors.blue),
-                          SizedBox(width: 6),
-                          Text(
-                            'Synced with Azuga',
-                            style: TextStyle(color: Colors.blue, fontSize: 12, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    Text(
-                      'Please complete all fields below',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+                   Text(
+                     'AHCCCS REQUIREMENT', 
+                     style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primary, letterSpacing: 1),
+                   ),
+                   const SizedBox(height: 8),
+                   Text(
+                     'Please complete all fields to finalize this trip.',
+                     textAlign: TextAlign.center,
+                     style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary),
+                   ),
+                   if (_isFetchingTelematics)
+                     Padding(
+                       padding: const EdgeInsets.only(top: 12),
+                       child: Row(
+                         mainAxisAlignment: MainAxisAlignment.center,
+                         children: [
+                           const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+                           const SizedBox(width: 8),
+                           Text('Syncing Azuga...', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+                         ],
+                       ),
+                     ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            // Auto-filled Provider Information
-            _SectionCard(
-              title: 'NEMT Provider Information',
-              icon: Icons.business,
+            // Provider & Driver Info
+            _SectionHeader(title: 'General Information', icon: Icons.info_outline),
+            _InfoCard(
               children: [
-                _InfoRow(label: 'Provider ID', value: 'AZ-NEMT-001'), // TODO: Get from company
-                _InfoRow(label: 'Provider Name', value: 'YazTrans NEMT Services'),
-                _InfoRow(label: 'Phone', value: '(602) 555-0100'),
+                _InfoRow(label: 'Provider', value: 'YazTrans NEMT Services'),
+                if (driver != null) _InfoRow(label: 'Driver', value: driver.fullName),
+                _InfoRow(label: 'Date', value: dateFormat.format(DateTime.now())),
+                if (vehicle != null) _InfoRow(label: 'Vehicle', value: '${vehicle.make} (${vehicle.licensePlate})'),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // Auto-filled Driver & Vehicle Information
-            _SectionCard(
-              title: "Driver's Information",
-              icon: Icons.person,
+             // Member Info
+            _SectionHeader(title: 'Member Information', icon: Icons.person_outline),
+            _InfoCard(
               children: [
-                _InfoRow(
-                  label: "Driver's Name",
-                  value: driver?.fullName ?? 'Unknown Driver',
-                ),
-                _InfoRow(
-                  label: 'Date',
-                  value: dateFormat.format(DateTime.now()),
-                ),
-                if (vehicle != null) ...[
-                  _InfoRow(
-                    label: 'Vehicle License/Fleet ID',
-                    value: vehicle.licensePlate,
-                  ),
-                  _InfoRow(
-                    label: 'Vehicle Make/Color',
-                    value: '${vehicle.make} ${vehicle.color ?? ''}',
-                  ),
-                  _InfoRow(
-                    label: 'Vehicle Type',
-                    value: vehicle.type.toString().split('.').last,
-                  ),
-                ],
+                _InfoRow(label: 'Name', value: member?.fullName ?? 'Unknown'),
+                _InfoRow(label: 'AHCCCS ID', value: member?.membershipId ?? trip.membershipId ?? 'N/A'),
+                _InfoRow(label: 'DOB', value: member?.dateOfBirth ?? 'N/A'),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // Auto-filled Member Information
-            _SectionCard(
-              title: 'Member Information',
-              icon: Icons.person_outline,
+            // Trip Details
+            _SectionHeader(title: 'Trip Details', icon: Icons.map_outlined),
+            _InfoCard(
               children: [
-                _InfoRow(
-                  label: 'AHCCCS #',
-                  value: member?.membershipId ?? trip.membershipId,
-                ),
-                _InfoRow(
-                  label: 'Date of Birth',
-                  value: member?.dateOfBirth ?? 'N/A',
-                ),
-                _InfoRow(
-                  label: 'Member Name',
-                  value: member?.fullName ?? 'Unknown',
-                ),
-                _InfoRow(
-                  label: 'Mailing Address',
-                  value: member?.address ?? 'N/A',
-                ),
+                _InfoRow(label: 'Pickup', value: trip.pickupAddress, isAddress: true),
+                _InfoRow(label: 'Time', value: trip.actualPickupTime != null ? timeFormat.format(trip.actualPickupTime!) : 'N/A'),
+                const Divider(height: 24),
+                _InfoRow(label: 'Dropoff', value: trip.dropoffAddress, isAddress: true),
+                _InfoRow(label: 'Time', value: timeFormat.format(DateTime.now())),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // Trip Details (Auto-filled)
-            _SectionCard(
-              title: '1st Pick-Up Location',
-              icon: Icons.trip_origin,
-              iconColor: AppColors.success,
-              children: [
-                _InfoRow(
-                  label: 'Physical Address',
-                  value: '${trip.pickupAddress}\n${trip.pickupCity}, ${trip.pickupState} ${trip.pickupZip}',
-                ),
-                _InfoRow(
-                  label: 'Pickup Time',
-                  value: trip.actualPickupTime != null
-                    ? timeFormat.format(trip.actualPickupTime!)
-                    : timeFormat.format(trip.scheduledPickupTime),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Odometer at Pickup
+            // Odometer Readings
+            _SectionHeader(title: 'Odometer Readings', icon: Icons.speed_rounded),
             Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppColors.lightBorder)),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Icon(Icons.speed, color: AppColors.warning),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Odometer Reading at Pickup',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
+                    _OdometerField(
                       controller: _pickupOdometerController,
-                      decoration: const InputDecoration(
-                        labelText: 'Odometer (miles)',
-                        hintText: 'Enter odometer reading',
-                        prefixIcon: Icon(Icons.speed),
-                      ),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Pickup odometer is required';
-                        }
-                        if (int.tryParse(value) == null) {
-                          return 'Enter a valid number';
-                        }
-                        return null;
-                      },
-                      onChanged: (_) => setState(() {}),
+                      label: 'Pickup Odometer',
+                      icon: Icons.trip_origin,
+                      color: AppColors.success,
                     ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Drop-off Location (Auto-filled)
-            _SectionCard(
-              title: '1st Drop-Off Location',
-              icon: Icons.location_on,
-              iconColor: AppColors.error,
-              children: [
-                _InfoRow(
-                  label: 'Physical Address',
-                  value: '${trip.dropoffAddress}\n${trip.dropoffCity}, ${trip.dropoffState} ${trip.dropoffZip}',
-                ),
-                _InfoRow(
-                  label: 'Drop-off Time',
-                  value: timeFormat.format(DateTime.now()),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Odometer at Drop-off
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.speed, color: AppColors.success),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Odometer Reading at Drop-off',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
+                    const SizedBox(height: 16),
+                    _OdometerField(
                       controller: _dropoffOdometerController,
-                      decoration: const InputDecoration(
-                        labelText: 'Odometer (miles)',
-                        hintText: 'Enter odometer reading',
-                        prefixIcon: Icon(Icons.speed),
-                      ),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Drop-off odometer is required';
-                        }
-                        final dropoff = int.tryParse(value);
-                        if (dropoff == null) {
-                          return 'Enter a valid number';
-                        }
-                        final pickup = int.tryParse(_pickupOdometerController.text);
-                        if (pickup != null && dropoff < pickup) {
-                          return 'Must be greater than pickup odometer';
-                        }
-                        return null;
-                      },
+                      label: 'Drop-off Odometer',
+                      icon: Icons.location_on,
+                      color: AppColors.error,
                       onChanged: (_) => setState(() {}),
                     ),
                     if (_tripMiles != null) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.success.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.route, color: AppColors.success),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Trip Miles: ${_tripMiles!.toStringAsFixed(1)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.success,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Reason for Visit
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.medical_services, color: AppColors.primary),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Reason for Visit',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _reasonForVisitController,
-                      decoration: const InputDecoration(
-                        labelText: 'Medical appointment type',
-                        hintText: 'e.g., Dialysis, Physical Therapy, Doctor Visit',
-                        prefixIcon: Icon(Icons.notes),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Reason for visit is required';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Escort Information (Optional)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.people, color: AppColors.info),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Escort Information (if applicable)',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _escortNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Name of Escort',
-                        hintText: 'Leave blank if no escort',
-                        prefixIcon: Icon(Icons.person),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _escortRelationshipController,
-                      decoration: const InputDecoration(
-                        labelText: 'Relationship to Member',
-                        hintText: 'e.g., Spouse, Parent, Caregiver',
-                        prefixIcon: Icon(Icons.family_restroom),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Multiple Members Question
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Were multiple members transported in the same vehicle on this trip?',
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        ChoiceChip(
-                          label: const Text('No'),
-                          selected: !_multipleMembers,
-                          onSelected: (selected) {
-                            setState(() => _multipleMembers = false);
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        ChoiceChip(
-                          label: const Text('Yes'),
-                          selected: _multipleMembers,
-                          onSelected: (selected) {
-                            setState(() => _multipleMembers = true);
-                          },
-                        ),
-                      ],
-                    ),
-                    if (_multipleMembers) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        'If yes, were pick-up and drop-off locations different for the members?',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 8),
+                      const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider()),
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          ChoiceChip(
-                            label: const Text('No'),
-                            selected: !_differentLocations,
-                            onSelected: (selected) {
-                              setState(() => _differentLocations = false);
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          ChoiceChip(
-                            label: const Text('Yes'),
-                            selected: _differentLocations,
-                            onSelected: (selected) {
-                              setState(() => _differentLocations = true);
-                            },
-                          ),
+                          Text('Total Distance', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                          Text('${_tripMiles!.toStringAsFixed(1)} mi', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
                         ],
                       ),
                     ],
@@ -664,33 +328,36 @@ class _TripCompletionPageState extends State<TripCompletionPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // Additional Notes
+            // Visit Reason
+            _SectionHeader(title: 'Visit Information', icon: Icons.medical_services_outlined),
             Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppColors.lightBorder)),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Icon(Icons.note_add, color: AppColors.textSecondary),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Additional Information',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
                     TextFormField(
-                      controller: _notesController,
-                      decoration: const InputDecoration(
-                        labelText: 'Notes (optional)',
-                        hintText: 'Any additional notes about the trip',
+                      controller: _reasonForVisitController,
+                      decoration: InputDecoration(
+                        labelText: 'Reason for Visit',
+                        hintText: 'e.g. Diagnosis, Therapy',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       ),
-                      maxLines: 3,
+                      validator: (v) => (v?.isEmpty ?? true) ? 'Required' : null,
+                    ),
+                    const SizedBox(height: 16),
+                     TextFormField(
+                      controller: _notesController,
+                      decoration: InputDecoration(
+                        labelText: 'Notes (Optional)',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      ),
+                      maxLines: 2,
                     ),
                   ],
                 ),
@@ -698,61 +365,48 @@ class _TripCompletionPageState extends State<TripCompletionPage> {
             ),
             const SizedBox(height: 24),
 
-            // Signatures Section
+            // Signatures
+            _SectionHeader(title: 'Signatures', icon: Icons.draw_outlined),
             Text(
-              'Signatures',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Both driver and member signatures are required to complete the trip report.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              'I certify that the information provided is accurate.',
+              style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 16),
-
-            // Driver Signature
+            
             SignatureCaptureWidget(
               title: 'Driver Signature',
               subtitle: driver?.fullName ?? 'Driver',
-              onSignatureChanged: (signature) {
-                setState(() => _driverSignature = signature);
-              },
+              onSignatureChanged: (s) => setState(() => _driverSignature = s),
             ),
             const SizedBox(height: 16),
-
-            // Member Signature
-            if (!_memberUnableToSign)
-              SignatureCaptureWidget(
-                title: 'Member Signature',
-                subtitle: member?.fullName ?? 'Member',
-                onSignatureChanged: (signature) {
-                  setState(() => _memberSignature = signature);
-                },
-              ),
-
-            // Member Unable to Sign Checkbox
-            Card(
-              child: CheckboxListTile(
-                title: const Text('Member is unable to sign'),
-                subtitle: const Text(
-                  'Check this box if the member is physically unable to provide a signature',
+            
+            Opacity(
+              opacity: _memberUnableToSign ? 0.5 : 1.0,
+              child: IgnorePointer(
+                ignoring: _memberUnableToSign,
+                child: SignatureCaptureWidget(
+                  title: 'Member Signature',
+                  subtitle: member?.fullName ?? 'Member',
+                  onSignatureChanged: (s) => setState(() => _memberSignature = s),
                 ),
-                value: _memberUnableToSign,
-                onChanged: (value) {
-                  setState(() {
-                    _memberUnableToSign = value ?? false;
-                    if (_memberUnableToSign) {
-                      _memberSignature = null;
-                    }
-                  });
-                },
-                activeColor: AppColors.warning,
               ),
             ),
+            
+            Transform.translate(
+              offset: const Offset(-8, 0),
+              child: CheckboxListTile(
+                title: Text('Member unable to sign', style: GoogleFonts.inter(fontSize: 14)),
+                value: _memberUnableToSign,
+                activeColor: AppColors.warning,
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                onChanged: (val) => setState(() {
+                  _memberUnableToSign = val ?? false;
+                  if (_memberUnableToSign) _memberSignature = null;
+                }),
+              ),
+            ),
+
             const SizedBox(height: 32),
 
             // Submit Button
@@ -764,44 +418,16 @@ class _TripCompletionPageState extends State<TripCompletionPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.success,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 2,
                 ),
-                child: _isSubmitting
-                  ? const SizedBox(
-                      height: 24,
-                      width: 24,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.send),
-                        SizedBox(width: 12),
-                        Text(
-                          'Submit Trip Report',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
+                child: _isSubmitting 
+                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : Text('Submit Report', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700)),
               ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              'By submitting, you certify that all information is accurate and complete.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
+            
+            const SizedBox(height: 48),
           ],
         ),
       ),
@@ -809,44 +435,42 @@ class _TripCompletionPageState extends State<TripCompletionPage> {
   }
 }
 
-class _SectionCard extends StatelessWidget {
+class _SectionHeader extends StatelessWidget {
   final String title;
   final IconData icon;
-  final Color? iconColor;
-  final List<Widget> children;
 
-  const _SectionCard({
-    required this.title,
-    required this.icon,
-    this.iconColor,
-    required this.children,
-  });
+  const _SectionHeader({required this.title, required this.icon});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: iconColor ?? AppColors.primary),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ...children,
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, left: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppColors.textTertiary),
+          const SizedBox(width: 8),
+          Text(title, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textSecondary, letterSpacing: 0.5)),
+        ],
       ),
+    );
+  }
+}
+
+class _InfoCard extends StatelessWidget {
+  final List<Widget> children;
+
+  const _InfoCard({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.lightBorder),
+      ),
+      child: Column(children: children),
     );
   }
 }
@@ -854,34 +478,60 @@ class _SectionCard extends StatelessWidget {
 class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
+  final bool isAddress;
 
-  const _InfoRow({required this.label, required this.value});
+  const _InfoRow({required this.label, required this.value, this.isAddress = false});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: isAddress ? CrossAxisAlignment.start : CrossAxisAlignment.center,
         children: [
           SizedBox(
-            width: 140,
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
+            width: 100,
+            child: Text(label, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
           ),
           Expanded(
             child: Text(
-              value,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
+              value, 
+              style: GoogleFonts.inter(
+                fontSize: 14, 
+                fontWeight: FontWeight.w600, 
+                color: AppColors.textPrimary
               ),
+              maxLines: isAddress ? 2 : 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _OdometerField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final Color color;
+  final ValueChanged<String>? onChanged;
+
+  const _OdometerField({required this.controller, required this.label, required this.icon, required this.color, this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: color),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.lightBorder)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: color, width: 2)),
       ),
     );
   }

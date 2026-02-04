@@ -45,7 +45,8 @@ class UserService extends ChangeNotifier {
 
 
   Future<void> loadUsers() async {
-     await _initializeSampleData(); 
+     await _initializeSampleData();
+     await fetchDrivers();
      notifyListeners();
   }
   
@@ -147,6 +148,61 @@ class UserService extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return false;
+    }
+  }
+
+  /// Fetch drivers from backend (Azuga sync)
+  Future<void> fetchDrivers() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/azuga/drivers'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        
+        // Clear existing drivers to avoid duplicates or assume full sync
+        // Ideally we merge, but for now let's just add new ones if not present
+        
+        for (var item in data) {
+          final id = item['id'];
+          // Check if already exists
+          if (_users.any((u) => u.id == id)) continue;
+          
+          // Parse name
+          final nameParts = (item['name'] as String).split(' ');
+          final firstName = nameParts.isNotEmpty ? nameParts.first : 'Unknown';
+          final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+          
+          final driver = UserModel(
+            id: id,
+            email: item['email'] ?? 'no-email-$id@example.com',
+            firstName: firstName,
+            lastName: lastName,
+            phoneNumber: item['phone'] ?? '',
+            role: UserRole.driver,
+            isActive: item['isActive'] ?? true,
+            createdAt: DateTime.now(), // Not provided by this endpoint
+            updatedAt: DateTime.now(),
+            vehicleId: item['vehicleId'],
+          );
+          
+          _users.add(driver);
+        }
+        
+        notifyListeners();
+      } else {
+        debugPrint('Failed to fetch drivers: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error fetching drivers: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 }

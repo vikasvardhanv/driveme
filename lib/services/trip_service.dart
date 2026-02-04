@@ -292,6 +292,8 @@ class TripService extends ChangeNotifier {
     }
   }
 
+  bool _isFirstLoad = true;
+
   /// Fetch trips from backend API
   Future<void> fetchTripsFromBackend(String driverId) async {
     try {
@@ -305,10 +307,35 @@ class TripService extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        _trips = data
+        final newTrips = data
           .where((t) => t['driverId'] == driverId)
           .map((t) => _parseTripFromBackend(t))
           .toList();
+          
+        // Check for new assignments to trigger notification
+        // We only notify if this isn't the very first load to avoid spamming on startup
+        // OR if the list was empty but now has items (which technically is an update if proper empty state existed)
+        if (!_isFirstLoad) {
+           final existingIds = _trips.map((t) => t.id).toSet();
+           for (final trip in newTrips) {
+             if (!existingIds.contains(trip.id) && 
+                (trip.status == TripStatus.assigned || trip.status == TripStatus.scheduled)) {
+               
+               // Found a new trip! Notify user.
+               final timeFormat = DateFormat('h:mm a');
+               
+               NotificationService().showTripAssignedNotification(
+                  tripId: trip.id,
+                  pickupAddress: trip.pickupAddress,
+                  pickupTime: timeFormat.format(trip.scheduledPickupTime),
+                  memberName: null,
+               );
+             }
+           }
+        }
+        
+        _trips = newTrips;
+        _isFirstLoad = false;
         await _saveTrips();
       }
     } catch (e) {

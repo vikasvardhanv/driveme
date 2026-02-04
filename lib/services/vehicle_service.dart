@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uuid/uuid.dart';
 import 'package:yazdrive/models/vehicle_model.dart';
+import 'package:yazdrive/services/api_service.dart';
 
 /// Service for managing vehicles
 class VehicleService extends ChangeNotifier {
   static const String _storageKey = 'vehicles';
-  final Uuid _uuid = const Uuid();
+  final ApiService _apiService = ApiService();
   
   List<VehicleModel> _vehicles = [];
   bool _isLoading = false;
@@ -47,22 +47,72 @@ class VehicleService extends ChangeNotifier {
     notifyListeners();
     
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final String? vehiclesJson = prefs.getString(_storageKey);
-      
-      if (vehiclesJson != null) {
-        final List<dynamic> decoded = jsonDecode(vehiclesJson);
-        _vehicles = decoded.map((json) => VehicleModel.fromJson(json as Map<String, dynamic>)).toList();
-      } else {
-        await _initializeSampleData();
+      // Try to fetch from API
+      try {
+        final List<dynamic> data = await _apiService.get('/vehicles');
+        _vehicles = data.map((json) {
+           // Ensure the backend response matches VehicleModel expectations
+           // If backend returns different specific fields, map them here.
+           // For now assuming direct mapping + some defaults for missing fields
+           return VehicleModel(
+             id: json['id'] ?? '',
+             make: json['make'] ?? 'Unknown',
+             model: json['model'] ?? 'Unknown',
+             year: json['year'] ?? 2020,
+             licensePlate: json['licensePlate'] ?? '',
+             vin: json['vin'] ?? '',
+             color: json['color'] ?? 'Unknown',
+             // Map backend 'vehicleType' to enum if needed, defaulting for now
+             type: _parseVehicleType(json['vehicleType']),
+             capacity: json['capacity'] ?? 4,
+             wheelchairAccessible: json['wheelchairAccessible'] ?? false,
+             hasOxygen: json['hasOxygen'] ?? false,
+             isActive: json['isActive'] ?? true,
+             currentMileage: json['currentMileage'] ?? 0,
+             lastMaintenance: json['lastMaintenance'] != null ? DateTime.parse(json['lastMaintenance']) : DateTime.now(),
+             nextMaintenanceDue: json['nextMaintenanceDue'] != null ? DateTime.parse(json['nextMaintenanceDue']) : DateTime.now().add(const Duration(days: 90)),
+             insuranceProvider: json['insuranceProvider'] ?? '',
+             insurancePolicyNumber: json['insurancePolicyNumber'] ?? '',
+             insuranceExpiry: json['insuranceExpiry'] != null ? DateTime.parse(json['insuranceExpiry']) : DateTime.now().add(const Duration(days: 365)),
+             registrationExpiry: json['registrationExpiry'] != null ? DateTime.parse(json['registrationExpiry']) : DateTime.now().add(const Duration(days: 365)),
+             registrationState: json['registrationState'] ?? 'AZ',
+             lastInspection: json['lastInspection'] != null ? DateTime.parse(json['lastInspection']) : DateTime.now(),
+             nextInspectionDue: json['nextInspectionDue'] != null ? DateTime.parse(json['nextInspectionDue']) : DateTime.now().add(const Duration(days: 365)),
+             createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
+             updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : DateTime.now(),
+           );
+        }).toList();
+        
+        // Save to local storage for offline fallback
+        await _saveVehicles();
+        
+      } catch (e) {
+        debugPrint('API Error loading vehicles, falling back to cache: \$e');
+        // Fallback to local storage
+        final prefs = await SharedPreferences.getInstance();
+        final String? vehiclesJson = prefs.getString(_storageKey);
+        
+        if (vehiclesJson != null) {
+          final List<dynamic> decoded = jsonDecode(vehiclesJson);
+          _vehicles = decoded.map((json) => VehicleModel.fromJson(json as Map<String, dynamic>)).toList();
+        }
       }
     } catch (e) {
-      debugPrint('Failed to load vehicles: \$e');
-      await _initializeSampleData();
+      debugPrint('Failed to load vehicles completely: \$e');
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+  
+  VehicleType _parseVehicleType(String? type) {
+    if (type == null) return VehicleType.sedan;
+    final t = type.toLowerCase();
+    if (t.contains('wheelchair')) return VehicleType.wheelchairVan;
+    if (t.contains('van')) return VehicleType.van;
+    if (t.contains('ambulette')) return VehicleType.ambulette;
+    if (t.contains('suv')) return VehicleType.suv;
+    return VehicleType.sedan;
   }
   
   Future<void> _saveVehicles() async {
@@ -75,111 +125,36 @@ class VehicleService extends ChangeNotifier {
     }
   }
   
-  Future<void> _initializeSampleData() async {
-    final now = DateTime.now();
-    _vehicles = [
-      VehicleModel(
-        id: _uuid.v4(),
-        make: 'Toyota',
-        model: 'Sienna',
-        year: 2023,
-        licensePlate: 'AZ-NEMT-001',
-        vin: '5TDKZ3DC5PS123456',
-        color: 'Silver',
-        type: VehicleType.van,
-        capacity: 7,
-        wheelchairAccessible: false,
-        hasOxygen: false,
-        isActive: true,
-        currentMileage: 15420,
-        lastMaintenance: now.subtract(const Duration(days: 45)),
-        nextMaintenanceDue: now.add(const Duration(days: 15)),
-        insuranceProvider: 'State Farm',
-        insurancePolicyNumber: 'POL-2023-001',
-        insuranceExpiry: DateTime(2025, 6, 30),
-        registrationExpiry: DateTime(2025, 3, 15),
-        registrationState: 'AZ',
-        lastInspection: now.subtract(const Duration(days: 60)),
-        nextInspectionDue: now.add(const Duration(days: 305)),
-        createdAt: now.subtract(const Duration(days: 180)),
-        updatedAt: now,
-      ),
-      VehicleModel(
-        id: _uuid.v4(),
-        make: 'Chrysler',
-        model: 'Pacifica',
-        year: 2022,
-        licensePlate: 'AZ-NEMT-002',
-        vin: '2C4RC1BG5NR234567',
-        color: 'White',
-        type: VehicleType.wheelchairVan,
-        capacity: 4,
-        wheelchairAccessible: true,
-        hasOxygen: true,
-        isActive: true,
-        currentMileage: 28750,
-        lastMaintenance: now.subtract(const Duration(days: 30)),
-        nextMaintenanceDue: now.add(const Duration(days: 30)),
-        insuranceProvider: 'State Farm',
-        insurancePolicyNumber: 'POL-2023-002',
-        insuranceExpiry: DateTime(2025, 6, 30),
-        registrationExpiry: DateTime(2025, 4, 20),
-        registrationState: 'AZ',
-        lastInspection: now.subtract(const Duration(days: 75)),
-        nextInspectionDue: now.add(const Duration(days: 290)),
-        createdAt: now.subtract(const Duration(days: 240)),
-        updatedAt: now,
-      ),
-      VehicleModel(
-        id: _uuid.v4(),
-        make: 'Honda',
-        model: 'Odyssey',
-        year: 2023,
-        licensePlate: 'AZ-NEMT-003',
-        vin: '5FNRL6H78NB345678',
-        color: 'Blue',
-        type: VehicleType.van,
-        capacity: 7,
-        wheelchairAccessible: false,
-        hasOxygen: false,
-        isActive: true,
-        currentMileage: 12340,
-        lastMaintenance: now.subtract(const Duration(days: 20)),
-        nextMaintenanceDue: now.add(const Duration(days: 40)),
-        insuranceProvider: 'State Farm',
-        insurancePolicyNumber: 'POL-2023-003',
-        insuranceExpiry: DateTime(2025, 6, 30),
-        registrationExpiry: DateTime(2025, 5, 10),
-        registrationState: 'AZ',
-        lastInspection: now.subtract(const Duration(days: 50)),
-        nextInspectionDue: now.add(const Duration(days: 315)),
-        createdAt: now.subtract(const Duration(days: 120)),
-        updatedAt: now,
-      ),
-    ];
-    await _saveVehicles();
-  }
-  
   Future<void> addVehicle(VehicleModel vehicle) async {
+    // Optimistic update
     _vehicles.add(vehicle);
-    await _saveVehicles();
     notifyListeners();
+    // TODO: Implement API call
   }
   
   Future<void> updateVehicle(VehicleModel vehicle) async {
+     // Optimistic update
     final index = _vehicles.indexWhere((v) => v.id == vehicle.id);
     if (index != -1) {
       _vehicles[index] = vehicle.copyWith(updatedAt: DateTime.now());
-      await _saveVehicles();
       notifyListeners();
+      // TODO: Implement API call
     }
   }
   
   Future<void> deleteVehicle(String vehicleId) async {
+    // Optimistic update
     _vehicles.removeWhere((v) => v.id == vehicleId);
-    await _saveVehicles();
     notifyListeners();
+     // TODO: Implement API call
   }
   
-  VehicleModel? getVehicleById(String id) => _vehicles.firstWhere((v) => v.id == id, orElse: () => _vehicles.first);
+  VehicleModel? getVehicleById(String id) {
+    try {
+      return _vehicles.firstWhere((v) => v.id == id);
+    } catch (_) {
+      return _vehicles.isNotEmpty ? _vehicles.first : null;
+    }
+  }
 }
+

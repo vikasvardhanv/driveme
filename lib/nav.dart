@@ -10,6 +10,7 @@ import 'package:yazdrive/pages/driver/driver_scaffold.dart';
 import 'package:yazdrive/pages/driver/trip_completion_page.dart';
 import 'package:yazdrive/pages/admin/create_trip_page.dart';
 import 'package:yazdrive/pages/admin/admin_dashboard_page.dart';
+import 'package:yazdrive/pages/admin/drivers_list_page.dart';
 
 /// GoRouter configuration for app navigation
 class AppRouter {
@@ -91,6 +92,11 @@ class AppRouter {
         name: 'admin_create_trip',
         pageBuilder: (context, state) => NoTransitionPage(child: const CreateTripPage()),
       ),
+      GoRoute(
+        path: AppRoutes.adminDrivers,
+        name: 'admin_drivers',
+        pageBuilder: (context, state) => NoTransitionPage(child: const DriversListPage()),
+      ),
     ],
   );
 }
@@ -107,4 +113,5 @@ class AppRoutes {
   static const String tripCompletion = '/driver/trip/:tripId/complete';
   static const String adminDashboard = '/admin/dashboard';
   static const String adminCreateTrip = '/admin/trips/create';
+  static const String adminDrivers = '/admin/drivers';
 }

@@ -334,6 +334,10 @@ class TripModel {
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
+  
+  // Helper getters
+  bool get wheelchairRequired => mobilityAid.toLowerCase().contains('wheelchair');
+  bool get attendantRequired => requiresAttendant;
 }
 
 enum TripType {

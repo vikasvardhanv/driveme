@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'dart:io' show Platform;
 import 'package:yazdrive/services/trip_service.dart';
 import 'package:yazdrive/services/user_service.dart';
 import 'package:yazdrive/services/location_service.dart';
@@ -13,6 +13,7 @@ import 'package:yazdrive/widgets/trip_instructions_modal.dart';
 import 'package:yazdrive/widgets/trip_cancellation_modal.dart';
 import 'package:yazdrive/utils/map_launcher.dart';
 import 'package:yazdrive/theme.dart';
+import 'package:yazdrive/widgets/trip_map.dart';
 
 class DriverTripDetailPage extends StatefulWidget {
   final String tripId;
@@ -35,9 +36,8 @@ class _DriverTripDetailPageState extends State<DriverTripDetailPage> {
     super.dispose();
   }
 
-  /// Check if driver is within 1 mile of target location
   Future<bool> _checkLocationProximity(double? lat, double? lng) async {
-    if (lat == null || lng == null) return true; // Skip check if no coordinates
+    if (lat == null || lng == null) return true;
     
     final locationService = context.read<LocationService>();
     final isNear = await locationService.isWithinRange(lat, lng, 1.0);
@@ -53,11 +53,10 @@ class _DriverTripDetailPageState extends State<DriverTripDetailPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        icon: Icon(Icons.wrong_location, color: AppColors.error, size: 48),
-        title: const Text('Wrong Location'),
+        icon: const Icon(Icons.location_off_rounded, color: AppColors.error, size: 48),
+        title: Text('Location Mismatch', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
         content: const Text(
-          'You appear to be more than 1 mile away from the destination. '
-          'Please make sure you are at the correct location before proceeding.',
+          'You appear to be more than 1 mile away from the target location. Please ensure you have arrived before proceeding.',
         ),
         actions: [
           TextButton(
@@ -78,23 +77,18 @@ class _DriverTripDetailPageState extends State<DriverTripDetailPage> {
       switch (trip.status) {
         case TripStatus.scheduled:
         case TripStatus.assigned:
-          // Show trip instructions modal first
           final confirmed = await TripInstructionsModal.show(context, trip);
           if (confirmed && mounted) {
             await tripService.startTrip(widget.tripId);
-            _showSuccessSnackbar('Trip started - Navigate to pickup location');
+            _showSuccessSnackbar('Trip started - Navigate to pickup');
           }
           break;
           
         case TripStatus.enRoute:
-          // Check location before marking arrived
-          final isNear = await _checkLocationProximity(
-            trip.pickupLatitude,
-            trip.pickupLongitude,
-          );
+          final isNear = await _checkLocationProximity(trip.pickupLatitude, trip.pickupLongitude);
           if (isNear) {
             await tripService.arriveAtPickup(widget.tripId);
-            _showSuccessSnackbar('Arrived at pickup - Contact member');
+            _showSuccessSnackbar('Arrived at pickup');
           }
           break;
           
@@ -104,13 +98,8 @@ class _DriverTripDetailPageState extends State<DriverTripDetailPage> {
           break;
           
         case TripStatus.pickedUp:
-          // Check location before completing
-          final isNearDropoff = await _checkLocationProximity(
-            trip.dropoffLatitude,
-            trip.dropoffLongitude,
-          );
+          final isNearDropoff = await _checkLocationProximity(trip.dropoffLatitude, trip.dropoffLongitude);
           if (isNearDropoff && mounted) {
-            // Navigate to AHCCCS Trip Completion page
             context.push('/driver/trip/${widget.tripId}/complete');
           }
           break;
@@ -121,16 +110,11 @@ class _DriverTripDetailPageState extends State<DriverTripDetailPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: AppColors.error,
-          ),
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isProcessing = false);
-      }
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
@@ -139,67 +123,16 @@ class _DriverTripDetailPageState extends State<DriverTripDetailPage> {
       SnackBar(
         content: Row(
           children: [
-            Icon(Icons.check_circle, color: Colors.white),
+            const Icon(Icons.check_circle_rounded, color: Colors.white),
             const SizedBox(width: 12),
-            Expanded(child: Text(message)),
+            Expanded(child: Text(message, style: GoogleFonts.inter())),
           ],
         ),
         backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
-  }
-
-  Future<void> _showCompleteDialog(TripService tripService) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Complete Trip'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: _milesController,
-              decoration: const InputDecoration(
-                labelText: 'Actual Miles',
-                prefixIcon: Icon(Icons.route),
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _notesController,
-              decoration: const InputDecoration(
-                labelText: 'Trip Notes (Optional)',
-                prefixIcon: Icon(Icons.notes),
-              ),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
-            child: const Text('Complete Trip', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-
-    if (result == true && mounted) {
-      final miles = double.tryParse(_milesController.text);
-      await tripService.completeTrip(
-        widget.tripId,
-        actualMiles: miles,
-        notes: _notesController.text.isEmpty ? null : _notesController.text,
-      );
-      if (mounted) {
-        _showSuccessSnackbar('Trip completed successfully!');
-        context.pop();
-      }
-    }
   }
 
   Future<void> _cancelTrip(TripService tripService) async {
@@ -212,20 +145,13 @@ class _DriverTripDetailPageState extends State<DriverTripDetailPage> {
         result['description']!,
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Trip cancelled')),
-        );
+        _showSuccessSnackbar('Trip cancelled');
         context.pop();
       }
     }
   }
 
   Future<void> _launchNavigation(String address, double? lat, double? lng) async {
-    if (lat == null || lng == null) {
-      _showSuccessSnackbar('Location coordinates missing');
-      return;
-    }
-  
     await MapLauncher.launchNavigation(
       context: context,
       latitude: lat,
@@ -249,192 +175,82 @@ class _DriverTripDetailPageState extends State<DriverTripDetailPage> {
 
     if (trip == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Trip Details')),
-        body: const Center(child: Text('Trip not found')),
+        appBar: AppBar(title: const Text('Trip Not Found')),
+        body: const Center(child: Text('Trip not found or access denied')),
       );
     }
 
     final member = userService.getUserById(trip.memberId);
-    final dateFormat = DateFormat('MMM d, y');
-    final timeFormat = DateFormat('h:mm a');
-
+    
     return Scaffold(
+      backgroundColor: AppColors.lightBackground,
       appBar: AppBar(
-        title: const Text('Trip Details'),
+        title: Text('Trip Details', style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: AppColors.lightBorder, height: 1),
+        ),
         actions: [
-          // Options menu (three dots)
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: (value) {
-              if (value == 'cancel') {
-                _cancelTrip(tripService);
-              }
-            },
-            itemBuilder: (context) => [
-              if (trip.status != TripStatus.completed && trip.status != TripStatus.cancelled)
-                const PopupMenuItem(
+          if (trip.status != TripStatus.completed && trip.status != TripStatus.cancelled)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert_rounded),
+              onSelected: (value) {
+                if (value == 'cancel') _cancelTrip(tripService);
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
                   value: 'cancel',
                   child: Row(
                     children: [
-                      Icon(Icons.cancel, color: Colors.red),
-                      SizedBox(width: 12),
-                      Text('Cancel Trip'),
+                      const Icon(Icons.cancel_outlined, color: AppColors.error, size: 20),
+                      const SizedBox(width: 12),
+                      Text('Cancel Trip', style: GoogleFonts.inter(color: AppColors.error)),
                     ],
                   ),
                 ),
-            ],
-          ),
+              ],
+            ),
         ],
       ),
       body: Column(
         children: [
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _StatusCard(trip: trip),
-                const SizedBox(height: 16),
-                _TripTimeCard(trip: trip, dateFormat: dateFormat, timeFormat: timeFormat),
-                const SizedBox(height: 16),
-                _LocationCard(
-                  title: 'Pickup Location',
-                  icon: Icons.trip_origin,
-                  iconColor: AppColors.success,
-                  address: trip.pickupAddress,
-                  city: '${trip.pickupCity}, ${trip.pickupState} ${trip.pickupZip}',
-                  notes: trip.pickupNotes,
-                  onTapDirections: () => _launchNavigation(
-                    '${trip.pickupAddress}, ${trip.pickupCity}, ${trip.pickupState} ${trip.pickupZip}',
-                    trip.pickupLatitude,
-                    trip.pickupLongitude,
-                  ),
-                  isActive: trip.status == TripStatus.enRoute || trip.status == TripStatus.assigned,
-               ),
-                const SizedBox(height: 16),
-                _LocationCard(
-                  title: 'Drop-off Location',
-                  icon: Icons.location_on,
-                  iconColor: AppColors.error,
-                  address: trip.dropoffAddress,
-                  city: '${trip.dropoffCity}, ${trip.dropoffState} ${trip.dropoffZip}',
-                  notes: trip.dropoffNotes,
-                  onTapDirections: () => _launchNavigation(
-                    '${trip.dropoffAddress}, ${trip.dropoffCity}, ${trip.dropoffState} ${trip.dropoffZip}',
-                    trip.dropoffLatitude,
-                    trip.dropoffLongitude,
-                  ),
-                  isActive: trip.status == TripStatus.pickedUp,
-                ),
-                const SizedBox(height: 16),
-                if (member != null) 
-                  _MemberInfoCard(
-                    member: member,
-                    onCall: () => _makePhoneCall(member.phoneNumber),
-                  ),
-                const SizedBox(height: 16),
-                _TripRequirementsCard(trip: trip),
-                const SizedBox(height: 100), // Space for bottom action
-              ],
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                   TripMap(trip: trip),
+                   const SizedBox(height: 20),
+                   _StatusCard(trip: trip),
+                   const SizedBox(height: 20),
+                   _TripTimeline(
+                     trip: trip, 
+                     onNavigatePickup: () => _launchNavigation(trip.pickupAddress, trip.pickupLatitude, trip.pickupLongitude),
+                     onNavigateDropoff: () => _launchNavigation(trip.dropoffAddress, trip.dropoffLatitude, trip.dropoffLongitude),
+                   ),
+                   const SizedBox(height: 20),
+                   if (member != null)
+                     _MemberCard(member: member, onCall: () => _makePhoneCall(member.phoneNumber)),
+                   const SizedBox(height: 20),
+                   _RequirementsCard(trip: trip),
+                   const SizedBox(height: 100),
+                ],
+              ),
             ),
           ),
           
-          // Bottom swipe action area
           if (trip.status != TripStatus.completed && trip.status != TripStatus.cancelled)
-            _BottomActionArea(
+            _ActionFooter(
               trip: trip,
               isProcessing: _isProcessing,
-              onSwipeComplete: () => _handleSwipeAction(tripService, trip),
+              onSwipe: () => _handleSwipeAction(tripService, trip),
             ),
         ],
       ),
-    );
-  }
-}
-
-class _BottomActionArea extends StatelessWidget {
-  final TripModel trip;
-  final bool isProcessing;
-  final VoidCallback onSwipeComplete;
-
-  const _BottomActionArea({
-    required this.trip,
-    required this.isProcessing,
-    required this.onSwipeComplete,
-  });
-
-  String _getActionText() {
-    switch (trip.status) {
-      case TripStatus.scheduled:
-      case TripStatus.assigned:
-        return 'Begin Pickup';
-      case TripStatus.enRoute:
-        return 'Arrived at Pickup';
-      case TripStatus.arrived:
-        return 'Pickup is Done';
-      case TripStatus.pickedUp:
-        return 'Drop-off is Done';
-      default:
-        return '';
-    }
-  }
-
-  Color _getActionColor() {
-    switch (trip.status) {
-      case TripStatus.scheduled:
-      case TripStatus.assigned:
-        return AppColors.primary;
-      case TripStatus.enRoute:
-        return AppColors.warning;
-      case TripStatus.arrived:
-        return AppColors.info;
-      case TripStatus.pickedUp:
-        return AppColors.success;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  IconData _getActionIcon() {
-    switch (trip.status) {
-      case TripStatus.scheduled:
-      case TripStatus.assigned:
-        return Icons.play_arrow;
-      case TripStatus.enRoute:
-        return Icons.location_on;
-      case TripStatus.arrived:
-        return Icons.person_add;
-      case TripStatus.pickedUp:
-        return Icons.check_circle;
-      default:
-        return Icons.check;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).padding.bottom),
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: isProcessing
-          ? Center(
-              child: CircularProgressIndicator(color: _getActionColor()),
-            )
-          : SwipeActionButton(
-              key: ValueKey(trip.status),
-              text: _getActionText(),
-              icon: _getActionIcon(),
-              color: _getActionColor(),
-              onSwipeComplete: onSwipeComplete,
-            ),
     );
   }
 }
@@ -444,50 +260,252 @@ class _StatusCard extends StatelessWidget {
 
   const _StatusCard({required this.trip});
 
-  Color _getStatusColor() {
+  @override
+  Widget build(BuildContext context) {
+    Color color;
+    IconData icon;
+    String text;
+
     switch (trip.status) {
       case TripStatus.scheduled:
       case TripStatus.assigned:
-        return AppColors.info;
+        color = AppColors.info;
+        icon = Icons.calendar_today_rounded;
+        text = 'Scheduled';
+        break;
       case TripStatus.enRoute:
+        color = AppColors.primary;
+        icon = Icons.directions_car_rounded;
+        text = 'En Route to Pickup';
+        break;
       case TripStatus.arrived:
-        return AppColors.warning;
+        color = Colors.orange;
+        icon = Icons.location_on_rounded;
+        text = 'Arrived at Pickup';
+        break;
       case TripStatus.pickedUp:
-        return AppColors.success;
+        color = AppColors.success;
+        icon = Icons.airline_seat_recline_normal_rounded;
+        text = 'Member Onboard';
+        break;
       case TripStatus.completed:
-        return AppColors.success;
+        color = AppColors.success;
+        icon = Icons.check_circle_rounded;
+        text = 'Completed';
+        break;
       case TripStatus.cancelled:
       case TripStatus.noShow:
-        return AppColors.error;
+        color = AppColors.error;
+        icon = Icons.cancel_rounded;
+        text = 'Cancelled';
+        break;
     }
-  }
 
-  String _getStatusText() {
-    return trip.status.toString().split('.').last.replaceAllMapped(RegExp(r'[A-Z]'), (match) => ' ${match.group(0)}').trim();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 32, color: color),
+          const SizedBox(height: 8),
+          Text(
+            text.toUpperCase(),
+            style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: color, letterSpacing: 1),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Scheduled for ${DateFormat('h:mm a').format(trip.scheduledPickupTime)}',
+             style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
   }
+}
+
+class _TripTimeline extends StatelessWidget {
+  final TripModel trip;
+  final VoidCallback onNavigatePickup;
+  final VoidCallback onNavigateDropoff;
+
+  const _TripTimeline({required this.trip, required this.onNavigatePickup, required this.onNavigateDropoff});
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = _getStatusColor();
+    final isPickupActive = trip.status == TripStatus.enRoute || trip.status == TripStatus.assigned || trip.status == TripStatus.scheduled;
+    final isDropoffActive = trip.status == TripStatus.pickedUp;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+        border: Border.all(color: AppColors.lightBorder),
+      ),
+      child: Column(
+        children: [
+          _LocationItem(
+            type: 'PICKUP',
+            address: trip.pickupAddress,
+            city: '${trip.pickupCity}, ${trip.pickupState}',
+            isActive: isPickupActive || trip.status == TripStatus.arrived,
+            isDone: !isPickupActive && trip.status != TripStatus.arrived && trip.status != TripStatus.scheduled && trip.status != TripStatus.assigned,
+            onNavigate: onNavigatePickup,
+            isFirst: true,
+          ),
+          const Divider(height: 1, color: AppColors.lightBorder),
+          _LocationItem(
+            type: 'DROPOFF',
+            address: trip.dropoffAddress,
+            city: '${trip.dropoffCity}, ${trip.dropoffState}',
+            isActive: isDropoffActive,
+            isDone: trip.status == TripStatus.completed,
+            onNavigate: onNavigateDropoff,
+            isLast: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LocationItem extends StatelessWidget {
+  final String type;
+  final String address;
+  final String city;
+  final bool isActive;
+  final bool isDone;
+  final bool isFirst;
+  final bool isLast;
+  final VoidCallback onNavigate;
+
+  const _LocationItem({
+    required this.type,
+    required this.address,
+    required this.city,
+    required this.isActive,
+    required this.isDone,
+    required this.onNavigate,
+    this.isFirst = false,
+    this.isLast = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isActive ? AppColors.primary : (isDone ? AppColors.success : AppColors.textDisabled);
+    
+    return InkWell(
+      onTap: isActive ? onNavigate : null,
+      borderRadius: BorderRadius.vertical(
+        top: isFirst ? const Radius.circular(16) : Radius.zero,
+        bottom: isLast ? const Radius.circular(16) : Radius.zero,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            Column(
+              children: [
+                Icon(
+                  isDone ? Icons.check_circle : (type == 'PICKUP' ? Icons.circle : Icons.location_on),
+                  color: color,
+                  size: 20,
+                ),
+                if (!isLast)
+                   Container(
+                     width: 2,
+                     height: 30, // Visual connector
+                     color: isDone ? AppColors.success.withOpacity(0.3) : AppColors.lightBorder,
+                     margin: const EdgeInsets.only(top: 4),
+                   ),
+              ],
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(type, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textTertiary, letterSpacing: 0.5)),
+                      if (isActive)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(4)),
+                          child: Text('Please Navigate', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(address, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                  Text(city, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            if (isActive)
+               Container(
+                 padding: const EdgeInsets.all(8),
+                 decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), shape: BoxShape.circle),
+                 child: const Icon(Icons.navigation_rounded, color: AppColors.primary, size: 20),
+               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MemberCard extends StatelessWidget {
+  final dynamic member;
+  final VoidCallback onCall;
+
+  const _MemberCard({required this.member, required this.onCall});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: statusColor.withOpacity(0.3)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.lightBorder),
+         boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline, color: statusColor, size: 28),
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: AppColors.lightSurface,
+            child: Text(member.firstName[0], style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
+          ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Trip Status', style: Theme.of(context).textTheme.labelMedium),
-                const SizedBox(height: 4),
-                Text(_getStatusText().toUpperCase(), style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: statusColor, fontWeight: FontWeight.w700)),
+                Text('PASSENGER', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textTertiary)),
+                Text(member.fullName, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
               ],
+            ),
+          ),
+          IconButton(
+            onPressed: onCall,
+            icon: const Icon(Icons.phone_rounded),
+            style: IconButton.styleFrom(
+              backgroundColor: AppColors.success,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.all(12),
             ),
           ),
         ],
@@ -496,250 +514,143 @@ class _StatusCard extends StatelessWidget {
   }
 }
 
-class _TripTimeCard extends StatelessWidget {
-  final TripModel trip;
-  final DateFormat dateFormat;
-  final DateFormat timeFormat;
-
-  const _TripTimeCard({required this.trip, required this.dateFormat, required this.timeFormat});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Scheduled Time', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(Icons.calendar_today, size: 20, color: AppColors.textSecondary),
-                const SizedBox(width: 12),
-                Text(dateFormat.format(trip.scheduledPickupTime), style: Theme.of(context).textTheme.bodyLarge),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.access_time, size: 20, color: AppColors.textSecondary),
-                const SizedBox(width: 12),
-                Text(timeFormat.format(trip.scheduledPickupTime), style: Theme.of(context).textTheme.bodyLarge),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LocationCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final Color iconColor;
-  final String address;
-  final String city;
-  final String? notes;
-  final VoidCallback onTapDirections;
-  final bool isActive;
-
-  const _LocationCard({
-    required this.title,
-    required this.icon,
-    required this.iconColor,
-    required this.address,
-    required this.city,
-    this.notes,
-    required this.onTapDirections,
-    this.isActive = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: isActive ? 4 : 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: isActive ? BorderSide(color: iconColor, width: 2) : BorderSide.none,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: iconColor.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: iconColor, size: 24),
-                ),
-                const SizedBox(width: 12),
-                Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
-                if (isActive)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: iconColor,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text('NEXT', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(address, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500)),
-            Text(city, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
-            if (notes != null) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_outline, size: 16, color: AppColors.warning),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(notes!, style: Theme.of(context).textTheme.bodySmall)),
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: onTapDirections,
-                icon: const Icon(Icons.navigation),
-                label: const Text('Navigate'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: iconColor,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MemberInfoCard extends StatelessWidget {
-  final dynamic member;
-  final VoidCallback onCall;
-
-  const _MemberInfoCard({required this.member, required this.onCall});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Member Information', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: AppColors.primary.withOpacity(0.1),
-                  child: Text(member.firstName[0] + member.lastName[0], style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(member.fullName, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
-                      Text('ID: ${member.membershipId ?? "N/A"}', style: Theme.of(context).textTheme.bodySmall),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: onCall,
-                icon: const Icon(Icons.phone),
-                label: Text('Call ${member.phoneNumber}'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.success,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TripRequirementsCard extends StatelessWidget {
+class _RequirementsCard extends StatelessWidget {
   final TripModel trip;
 
-  const _TripRequirementsCard({required this.trip});
+  const _RequirementsCard({required this.trip});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Trip Requirements', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
-            if (trip.mobilityAid != 'none')
-              _RequirementChip(icon: Icons.accessible, label: 'Mobility Aid: ${trip.mobilityAid}'),
-            if (trip.requiresAttendant)
-              _RequirementChip(icon: Icons.people, label: 'Attendant Required (${trip.attendantCount})'),
-            if (trip.oxygenRequired)
-              _RequirementChip(icon: Icons.air, label: 'Oxygen Required'),
-            if (trip.specialRequirements != null) ...[
-              const SizedBox(height: 8),
-              Text('Special Notes:', style: Theme.of(context).textTheme.labelMedium),
-              const SizedBox(height: 4),
-              Text(trip.specialRequirements!, style: Theme.of(context).textTheme.bodySmall),
-            ],
-            if (trip.mobilityAid == 'none' && !trip.requiresAttendant && !trip.oxygenRequired && trip.specialRequirements == null)
-              Text('No special requirements', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
-          ],
-        ),
+    if (trip.mobilityAid == 'none' && !trip.requiresAttendant && !trip.oxygenRequired && trip.specialRequirements == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.lightBorder),
       ),
-    );
-  }
-}
-
-class _RequirementChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _RequirementChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: AppColors.warning),
-          const SizedBox(width: 8),
-          Text(label, style: Theme.of(context).textTheme.bodyMedium),
+          Text('Requirements', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (trip.mobilityAid != 'none') _Badge(label: trip.mobilityAid, icon: Icons.accessible_forward, color: Colors.orange),
+              if (trip.requiresAttendant) _Badge(label: 'Attendant', icon: Icons.people, color: Colors.blue),
+              if (trip.oxygenRequired) _Badge(label: 'Oxygen', icon: Icons.air, color: Colors.teal),
+            ],
+          ),
+          if (trip.specialRequirements != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: AppColors.lightSurface, borderRadius: BorderRadius.circular(8)),
+              child: Row(
+                children: [
+                  const Icon(Icons.notes, size: 16, color: AppColors.textSecondary),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(trip.specialRequirements!, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary, fontStyle: FontStyle.italic))),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  const _Badge({required this.label, required this.icon, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(label, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionFooter extends StatelessWidget {
+  final TripModel trip;
+  final bool isProcessing;
+  final VoidCallback onSwipe;
+
+  const _ActionFooter({required this.trip, required this.isProcessing, required this.onSwipe});
+
+  @override
+  Widget build(BuildContext context) {
+    String label = 'Swipe to Start';
+    Color color = AppColors.primary;
+
+    switch (trip.status) {
+      case TripStatus.scheduled:
+      case TripStatus.assigned:
+        label = 'Swipe to Start Trip';
+        color = AppColors.primary;
+        break;
+      case TripStatus.enRoute:
+        label = 'Swipe to Arrive at Pickup';
+        color = AppColors.warning;
+        break;
+      case TripStatus.arrived:
+        label = 'Swipe to Confirm Pickup';
+        color = AppColors.info;
+        break;
+      case TripStatus.pickedUp:
+        label = 'Swipe to Complete Drop-off';
+        color = AppColors.success;
+        break;
+      default:
+        break;
+    }
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.of(context).padding.bottom),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, -5)),
+        ],
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isProcessing)
+             const CircularProgressIndicator()
+          else
+            SwipeActionButton(
+              key: ValueKey(trip.status),
+              text: label,
+              color: color,
+              onSwipeComplete: onSwipe,
+              icon: Icons.double_arrow_rounded,
+            ),
         ],
       ),
     );

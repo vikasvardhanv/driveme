@@ -11,6 +11,7 @@
         "file_picker",
         "flutter",
         "flutter_local_notifications",
+        "flutter_map",
         "geolocator",
         "go_router",
         "google_fonts",
@@ -18,6 +19,7 @@
         "http",
         "image_picker",
         "intl",
+        "latlong2",
         "mailer",
         "path_provider",
         "pdf",
@@ -70,6 +72,29 @@
         "stack_trace",
         "stream_channel",
         "test_api",
+        "vector_math"
+      ]
+    },
+    {
+      "name": "latlong2",
+      "version": "0.9.1",
+      "dependencies": [
+        "intl"
+      ]
+    },
+    {
+      "name": "flutter_map",
+      "version": "6.2.1",
+      "dependencies": [
+        "async",
+        "collection",
+        "flutter",
+        "http",
+        "latlong2",
+        "logger",
+        "meta",
+        "polylabel",
+        "proj4dart",
         "vector_math"
       ]
     },
@@ -461,6 +486,37 @@
       ]
     },
     {
+      "name": "proj4dart",
+      "version": "2.1.0",
+      "dependencies": [
+        "meta",
+        "mgrs_dart",
+        "wkt_parser"
+      ]
+    },
+    {
+      "name": "polylabel",
+      "version": "1.0.1",
+      "dependencies": [
+        "collection"
+      ]
+    },
+    {
+      "name": "logger",
+      "version": "2.6.2",
+      "dependencies": [
+        "meta"
+      ]
+    },
+    {
+      "name": "async",
+      "version": "2.13.0",
+      "dependencies": [
+        "collection",
+        "meta"
+      ]
+    },
+    {
       "name": "timezone",
       "version": "0.10.1",
       "dependencies": [
@@ -501,14 +557,6 @@
         "source_span",
         "string_scanner",
         "typed_data"
-      ]
-    },
-    {
-      "name": "async",
-      "version": "2.13.0",
-      "dependencies": [
-        "collection",
-        "meta"
       ]
     },
     {
@@ -1057,6 +1105,18 @@
       ]
     },
     {
+      "name": "wkt_parser",
+      "version": "2.0.0",
+      "dependencies": []
+    },
+    {
+      "name": "mgrs_dart",
+      "version": "2.0.0",
+      "dependencies": [
+        "unicode"
+      ]
+    },
+    {
       "name": "xdg_directories",
       "version": "1.1.0",
       "dependencies": [
@@ -1155,11 +1215,25 @@
       "dependencies": []
     },
     {
+      "name": "unicode",
+      "version": "0.3.1",
+      "dependencies": [
+        "lists"
+      ]
+    },
+    {
       "name": "html",
       "version": "0.15.6",
       "dependencies": [
         "csslib",
         "source_span"
+      ]
+    },
+    {
+      "name": "lists",
+      "version": "1.0.1",
+      "dependencies": [
+        "meta"
       ]
     },
     {

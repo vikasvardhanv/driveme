@@ -165,7 +165,7 @@ class _SignatureCaptureWidgetState extends State<SignatureCaptureWidget> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 border: Border.all(
-                  color: _hasSignature ? AppColors.success : AppColors.border,
+                  color: _hasSignature ? AppColors.success : AppColors.lightBorder,
                   width: _hasSignature ? 2 : 1,
                 ),
                 borderRadius: BorderRadius.circular(8),

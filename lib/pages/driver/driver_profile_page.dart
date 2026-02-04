@@ -285,3 +285,95 @@ class _InfoRow extends StatelessWidget {
     );
   }
 }
+
+class _ContactRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final bool isPrimary;
+
+  const _ContactRow({
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.isPrimary = false,
+  });
+
+  Future<void> _makeCall(BuildContext context) async {
+    final Uri launchUri = Uri(
+      scheme: 'tel',
+      path: value.replaceAll(RegExp(r'[^\d]'), ''),
+    );
+    if (await canLaunchUrl(launchUri)) {
+      await launchUrl(launchUri);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not launch dialer')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: InkWell(
+        onTap: () => _makeCall(context),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isPrimary ? AppColors.primary.withOpacity(0.05) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: isPrimary ? Border.all(color: AppColors.primary.withOpacity(0.1)) : null,
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isPrimary ? AppColors.primary.withOpacity(0.1) : AppColors.lightSurfaceVariant,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  color: isPrimary ? AppColors.primary : AppColors.textSecondary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: isPrimary ? AppColors.primary : AppColors.textPrimary,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                color: AppColors.textTertiary,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
