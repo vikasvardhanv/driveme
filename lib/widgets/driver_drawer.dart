@@ -60,7 +60,7 @@ class DriverDrawer extends StatelessWidget {
                   color: Colors.lightBlue[300]!,
                   onTap: () {
                     context.pop(); // Close drawer
-                    // Navigate to history (using filtered view on trips page usually)
+                    context.goNamed('driver_trips');
                   },
                 ),
                 _DrawerItem(
@@ -69,7 +69,7 @@ class DriverDrawer extends StatelessWidget {
                   color: Colors.teal[300]!,
                   onTap: () {
                     context.pop();
-                    // Open accident report
+                    _showComingSoon(context, 'Report an Accident');
                   },
                 ),
                 _DrawerItem(
@@ -91,6 +91,7 @@ class DriverDrawer extends StatelessWidget {
                   color: Colors.cyan[300]!,
                   onTap: () {
                     context.pop();
+                    _showComingSoon(context, 'Help');
                   },
                 ),
                 const Divider(color: Colors.white24, height: 1),
@@ -100,6 +101,7 @@ class DriverDrawer extends StatelessWidget {
                   color: Colors.cyan[300]!,
                   onTap: () {
                     context.pop();
+                    _showComingSoon(context, 'Driver Handbook');
                   },
                 ),
                 const Divider(color: Colors.white24, height: 1),
@@ -109,6 +111,7 @@ class DriverDrawer extends StatelessWidget {
                   color: Colors.cyan[300]!,
                   onTap: () {
                     context.pop();
+                    _showComingSoon(context, 'Report Passenger');
                   },
                 ),
                  const Divider(color: Colors.white24, height: 1),
@@ -135,6 +138,21 @@ class DriverDrawer extends StatelessWidget {
             },
           ),
           const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+  void _showComingSoon(BuildContext context, String feature) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Coming Soon'),
+        content: Text('$feature is currently under development.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
         ],
       ),
     );
