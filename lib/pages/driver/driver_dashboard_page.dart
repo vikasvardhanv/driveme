@@ -685,33 +685,72 @@ class _TripCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        _getStatusText(),
-                        style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: statusColor),
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            _getStatusText(),
+                            style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: statusColor),
+                          ),
+                        ),
+                        if (trip.tripNumber != null) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            '#${trip.tripNumber}',
+                            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ],
                     ),
-                    Text(
-                      timeFormat.format(trip.scheduledPickupTime),
-                      style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          DateFormat('h:mm a').format(trip.scheduledPickupTime),
+                          style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                        ),
+                        Text(
+                          DateFormat('MMM d').format(trip.scheduledPickupTime),
+                          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 
-                // Pickup
+                // Customer Info
+                Row(
+                  children: [
+                    const Icon(Icons.person_outline_rounded, size: 16, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        trip.customerName ?? 'Guest',
+                        style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (trip.customerPhone != null)
+                      const Icon(Icons.phone_in_talk_outlined, size: 16, color: AppColors.textSecondary),
+                  ],
+                ),
+                const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1)),
+                
+                // Pickup & Dropoff
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                      Column(
                        children: [
-                         Icon(Icons.circle, size: 12, color: AppColors.primary),
-                         Container(width: 2, height: 24, color: AppColors.lightBorder),
+                         Icon(Icons.circle, size: 10, color: AppColors.primary),
+                         Container(width: 2, height: 28, color: AppColors.lightBorder),
                          Icon(Icons.location_on, size: 12, color: AppColors.textTertiary),
                        ],
                      ),
@@ -722,14 +761,14 @@ class _TripCard extends StatelessWidget {
                          children: [
                            Text(
                              trip.pickupAddress,
-                             style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                             style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
                              maxLines: 1,
                              overflow: TextOverflow.ellipsis,
                            ),
-                           const SizedBox(height: 12),
+                           const SizedBox(height: 16), // Match line height
                            Text(
                              trip.dropoffAddress,
-                             style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary),
+                             style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary),
                              maxLines: 1,
                              overflow: TextOverflow.ellipsis,
                            ),
@@ -803,131 +842,37 @@ class _ActiveTripCard extends StatelessWidget {
           },
           borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.navigation_rounded, size: 14, color: Colors.white),
-                          const SizedBox(width: 4),
-                          Text(
-                            'CURRENT TRIP',
-                            style: GoogleFonts.inter(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                    const Icon(Icons.arrow_forward_rounded, size: 20, color: Colors.white),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Column(
-                      children: [
-                        const Icon(Icons.trip_origin, color: Colors.white, size: 20),
-                        Container(
-                          width: 2,
-                          height: 30,
-                          color: Colors.white.withOpacity(0.3),
-                          margin: const EdgeInsets.symmetric(vertical: 4),
-                        ),
-                        const Icon(Icons.location_on, color: AppColors.secondary, size: 20),
-                      ],
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'PICKUP', 
-                            style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.7), letterSpacing: 1)
-                          ),
-                          Text(
-                            trip.pickupAddress,
-                            style: GoogleFonts.inter(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'DROPOFF', 
-                            style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.7), letterSpacing: 1)
-                          ),
-                          Text(
-                            trip.dropoffAddress,
-                            style: GoogleFonts.inter(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            padding: const EdgeInsets.all(16),
+            child: Row(
+               children: [
+                 Container(
+                   padding: const EdgeInsets.all(12),
+                   decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                   child: const Icon(Icons.navigation_rounded, color: Colors.white, size: 24),
+                 ),
+                 const SizedBox(width: 16),
+                 Expanded(
+                   child: Column(
+                     crossAxisAlignment: CrossAxisAlignment.start,
+                     children: [
+                       Text(
+                         'CURRENT TRIP',
+                         style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white.withOpacity(0.8), letterSpacing: 1),
+                       ),
+                       const SizedBox(height: 4),
+                       Text(
+                         trip.pickupAddress,
+                         style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+                         maxLines: 1,
+                         overflow: TextOverflow.ellipsis,
+                       ),
+                     ],
+                   ),
+                 ),
+                 const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16),
+               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NoActiveTripCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.lightSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.lightBorder),
-      ),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(Icons.drive_eta, size: 48, color: AppColors.textDisabled),
-            const SizedBox(height: 12),
-            Text(
-              'No Active Trip',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Start a scheduled trip to see it here',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppColors.textDisabled,
-              ),
-            ),
-          ],
         ),
       ),
     );

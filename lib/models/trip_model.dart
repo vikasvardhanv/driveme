@@ -30,7 +30,12 @@ class TripModel {
   final double? dropoffLatitude;
   final double? dropoffLongitude;
   final String? dropoffNotes;
-  
+
+  // Customer info (for non-member trips)
+  final String? customerName;
+  final String? customerPhone;
+  final String? customerEmail;
+
   // Trip metadata
   final String? appointmentType; // Medical, Pharmacy, Dialysis, etc.
   final String? facilityName;
@@ -62,6 +67,7 @@ class TripModel {
   final String? memberSignature;
   final List<String>? photoDocumentation;
   final String? pdfReportUrl; // Added
+  final int? tripNumber;
   final String? notes;
   
   final DateTime createdAt;
@@ -92,6 +98,9 @@ class TripModel {
     this.dropoffLatitude,
     this.dropoffLongitude,
     this.dropoffNotes,
+    this.customerName,
+    this.customerPhone,
+    this.customerEmail,
     this.appointmentType,
     this.facilityName,
     this.facilityPhone,
@@ -116,6 +125,7 @@ class TripModel {
     this.memberSignature,
     this.photoDocumentation,
     this.pdfReportUrl, // Added
+    this.tripNumber,
     this.notes,
     required this.createdAt,
     required this.updatedAt,
@@ -146,6 +156,9 @@ class TripModel {
     'dropoffLatitude': dropoffLatitude,
     'dropoffLongitude': dropoffLongitude,
     'dropoffNotes': dropoffNotes,
+    'customerName': customerName,
+    'customerPhone': customerPhone,
+    'customerEmail': customerEmail,
     'appointmentType': appointmentType,
     'facilityName': facilityName,
     'facilityPhone': facilityPhone,
@@ -170,12 +183,24 @@ class TripModel {
     'memberSignature': memberSignature,
     'photoDocumentation': photoDocumentation,
     'pdfReportUrl': pdfReportUrl, // Added
+    'tripNumber': tripNumber,
     'notes': notes,
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
   };
   
-  factory TripModel.fromJson(Map<String, dynamic> json) => TripModel(
+  factory TripModel.fromJson(Map<String, dynamic> json) {
+    // Parse member info if available (overrides raw customer fields)
+    String? name = json['customerName'] as String?;
+    String? phone = json['customerPhone'] as String?;
+    
+    if (json['member'] != null) {
+      final member = json['member'];
+      name = '${member['firstName']} ${member['lastName']}';
+      phone = member['phone'] as String?;
+    }
+    
+    return TripModel(
     id: json['id'] as String,
     memberId: json['memberId'] as String,
     driverId: json['driverId'] as String?,
@@ -200,6 +225,9 @@ class TripModel {
     dropoffLatitude: json['dropoffLatitude'] as double?,
     dropoffLongitude: json['dropoffLongitude'] as double?,
     dropoffNotes: json['dropoffNotes'] as String?,
+    customerName: name,
+    customerPhone: phone,
+    customerEmail: json['customerEmail'] as String?,
     appointmentType: json['appointmentType'] as String?,
     facilityName: json['facilityName'] as String?,
     facilityPhone: json['facilityPhone'] as String?,
@@ -224,11 +252,13 @@ class TripModel {
     memberSignature: json['memberSignature'] as String?,
     photoDocumentation: (json['photoDocumentation'] as List<dynamic>?)?.cast<String>(),
     pdfReportUrl: json['pdfReportUrl'] as String?, // Added
+    tripNumber: json['tripNumber'] as int?,
     notes: json['notes'] as String?,
     createdAt: DateTime.parse(json['createdAt'] as String),
     updatedAt: DateTime.parse(json['updatedAt'] as String),
   );
-  
+  }
+
   TripModel copyWith({
     String? id,
     String? memberId,
@@ -254,6 +284,9 @@ class TripModel {
     double? dropoffLatitude,
     double? dropoffLongitude,
     String? dropoffNotes,
+    String? customerName,
+    String? customerPhone,
+    String? customerEmail,
     String? appointmentType,
     String? facilityName,
     String? facilityPhone,
@@ -278,6 +311,7 @@ class TripModel {
     String? memberSignature,
     List<String>? photoDocumentation,
     String? pdfReportUrl, // Added
+    int? tripNumber,
     String? notes,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -306,6 +340,9 @@ class TripModel {
     dropoffLatitude: dropoffLatitude ?? this.dropoffLatitude,
     dropoffLongitude: dropoffLongitude ?? this.dropoffLongitude,
     dropoffNotes: dropoffNotes ?? this.dropoffNotes,
+    customerName: customerName ?? this.customerName,
+    customerPhone: customerPhone ?? this.customerPhone,
+    customerEmail: customerEmail ?? this.customerEmail,
     appointmentType: appointmentType ?? this.appointmentType,
     facilityName: facilityName ?? this.facilityName,
     facilityPhone: facilityPhone ?? this.facilityPhone,
@@ -330,6 +367,7 @@ class TripModel {
     memberSignature: memberSignature ?? this.memberSignature,
     photoDocumentation: photoDocumentation ?? this.photoDocumentation,
     pdfReportUrl: pdfReportUrl ?? this.pdfReportUrl, // Added
+    tripNumber: tripNumber ?? this.tripNumber,
     notes: notes ?? this.notes,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,

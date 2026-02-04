@@ -160,10 +160,30 @@ class _DriverTripDetailPageState extends State<DriverTripDetailPage> {
     );
   }
 
-  Future<void> _makePhoneCall(String phoneNumber) async {
+  Future<void> _makePhoneCall(String? phoneNumber) async {
+    if (phoneNumber == null) return;
     final uri = Uri.parse('tel:$phoneNumber');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
+    }
+  }
+
+  Future<void> _undoAction(TripService tripService) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Undo Last Action?', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+        content: const Text('This will revert the trip status to the previous state.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Undo')),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await tripService.undoLastAction(widget.tripId);
+      if (mounted) _showSuccessSnackbar('Status reverted');
     }
   }
 
@@ -197,8 +217,18 @@ class _DriverTripDetailPageState extends State<DriverTripDetailPage> {
         actions: [
           if (trip.status != TripStatus.completed && trip.status != TripStatus.cancelled)
             PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert_rounded),
               itemBuilder: (context) => [
+                if (trip.status == TripStatus.enRoute || trip.status == TripStatus.arrived || trip.status == TripStatus.pickedUp)
+                  PopupMenuItem(
+                    value: 'undo',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.undo_rounded, color: AppColors.warning, size: 20),
+                        const SizedBox(width: 12),
+                        Text('Undo Action', style: GoogleFonts.inter(color: AppColors.textPrimary)),
+                      ],
+                    ),
+                  ),
                 PopupMenuItem(
                   value: 'info',
                   child: Row(
@@ -223,6 +253,8 @@ class _DriverTripDetailPageState extends State<DriverTripDetailPage> {
               onSelected: (value) {
                 if (value == 'cancel') {
                   _cancelTrip(tripService);
+                } else if (value == 'undo') {
+                  _undoAction(tripService);
                 } else if (value == 'info') {
                    showDialog(
                      context: context,
@@ -269,8 +301,12 @@ class _DriverTripDetailPageState extends State<DriverTripDetailPage> {
                      onNavigateDropoff: () => _launchNavigation(trip.dropoffAddress, trip.dropoffLatitude, trip.dropoffLongitude),
                    ),
                    const SizedBox(height: 20),
-                   if (member != null)
-                     _MemberCard(member: member, onCall: () => _makePhoneCall(member.phoneNumber)),
+                   if (member != null || trip.customerName != null)
+                     _MemberCard(
+                       name: trip.customerName ?? member?.fullName ?? 'Guest',
+                       phone: trip.customerPhone ?? member?.phoneNumber,
+                       onCall: () => _makePhoneCall(trip.customerPhone ?? member?.phoneNumber),
+                     ),
                    const SizedBox(height: 20),
                    _RequirementsCard(trip: trip),
                    const SizedBox(height: 100),
@@ -298,65 +334,92 @@ class _StatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color color;
+    Color backgroundColor;
+    Color textColor;
     IconData icon;
-    String text;
+    String statusText;
+    String subText;
 
     switch (trip.status) {
-      case TripStatus.scheduled:
-      case TripStatus.assigned:
-        color = AppColors.info;
-        icon = Icons.calendar_today_rounded;
-        text = 'Scheduled';
-        break;
-      case TripStatus.enRoute:
-        color = AppColors.primary;
-        icon = Icons.directions_car_rounded;
-        text = 'En Route to Pickup';
-        break;
-      case TripStatus.arrived:
-        color = Colors.orange;
-        icon = Icons.location_on_rounded;
-        text = 'Arrived at Pickup';
-        break;
-      case TripStatus.pickedUp:
-        color = AppColors.success;
-        icon = Icons.airline_seat_recline_normal_rounded;
-        text = 'Member Onboard';
-        break;
       case TripStatus.completed:
-        color = AppColors.success;
+        backgroundColor = const Color(0xFFE0F2F1); // Light Mint Green
+        textColor = const Color(0xFF009688); // Teal
         icon = Icons.check_circle_rounded;
-        text = 'Completed';
+        statusText = 'COMPLETED';
+        subText = 'Scheduled for ${DateFormat('h:mm a').format(trip.scheduledPickupTime)}';
         break;
       case TripStatus.cancelled:
       case TripStatus.noShow:
-        color = AppColors.error;
+        backgroundColor = const Color(0xFFFFEBEE); // Light Red
+        textColor = AppColors.error;
         icon = Icons.cancel_rounded;
-        text = 'Cancelled';
+        statusText = 'CANCELLED';
+        subText = 'Was scheduled for ${DateFormat('h:mm a').format(trip.scheduledPickupTime)}';
         break;
+      default:
+        // Active states
+        backgroundColor = const Color(0xFFE3F2FD); // Light Blue
+        textColor = AppColors.primary;
+        icon = Icons.directions_car_rounded;
+        statusText = trip.status.toString().split('.').last.toUpperCase();
+        subText = 'Scheduled for ${DateFormat('h:mm a').format(trip.scheduledPickupTime)}';
     }
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: backgroundColor),
       ),
       child: Column(
         children: [
-          Icon(icon, size: 32, color: color),
-          const SizedBox(height: 8),
-          Text(
-            text.toUpperCase(),
-            style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: color, letterSpacing: 1),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 32, color: textColor),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 12),
           Text(
-            'Scheduled for ${DateFormat('h:mm a').format(trip.scheduledPickupTime)}',
-             style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary),
+            statusText,
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: textColor,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (trip.tripNumber != null)
+             Padding(
+               padding: const EdgeInsets.only(bottom: 8.0),
+               child: Container(
+                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                 decoration: BoxDecoration(
+                   color: textColor.withOpacity(0.1),
+                   borderRadius: BorderRadius.circular(4),
+                 ),
+                 child: Text(
+                   'TRIP #${trip.tripNumber}',
+                   style: GoogleFonts.robotoMono(
+                     fontSize: 12,
+                     fontWeight: FontWeight.w600,
+                     color: textColor,
+                   ),
+                 ),
+               ),
+             ),
+          Text(
+            subText,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -373,17 +436,14 @@ class _TripTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isPickupActive = trip.status == TripStatus.enRoute || trip.status == TripStatus.assigned || trip.status == TripStatus.scheduled;
-    final isDropoffActive = trip.status == TripStatus.pickedUp;
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
         border: Border.all(color: AppColors.lightBorder),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2)),
+        ],
       ),
       child: Column(
         children: [
@@ -391,20 +451,16 @@ class _TripTimeline extends StatelessWidget {
             type: 'PICKUP',
             address: trip.pickupAddress,
             city: '${trip.pickupCity}, ${trip.pickupState}',
-            isActive: isPickupActive || trip.status == TripStatus.arrived,
-            isDone: !isPickupActive && trip.status != TripStatus.arrived && trip.status != TripStatus.scheduled && trip.status != TripStatus.assigned,
-            onNavigate: onNavigatePickup,
-            isFirst: true,
+            isDone: true, // Always show checkmark style for visual matching as per request, or conditional
+            showConnector: true,
           ),
           const Divider(height: 1, color: AppColors.lightBorder),
           _LocationItem(
             type: 'DROPOFF',
             address: trip.dropoffAddress,
             city: '${trip.dropoffCity}, ${trip.dropoffState}',
-            isActive: isDropoffActive,
-            isDone: trip.status == TripStatus.completed,
-            onNavigate: onNavigateDropoff,
-            isLast: true,
+            isDone: true,
+            showConnector: false,
           ),
         ],
       ),
@@ -416,95 +472,88 @@ class _LocationItem extends StatelessWidget {
   final String type;
   final String address;
   final String city;
-  final bool isActive;
   final bool isDone;
-  final bool isFirst;
-  final bool isLast;
-  final VoidCallback onNavigate;
+  final bool showConnector;
 
   const _LocationItem({
     required this.type,
     required this.address,
     required this.city,
-    required this.isActive,
     required this.isDone,
-    required this.onNavigate,
-    this.isFirst = false,
-    this.isLast = false,
+    this.showConnector = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = isActive ? AppColors.primary : (isDone ? AppColors.success : AppColors.textDisabled);
-    
-    return InkWell(
-      onTap: isActive ? onNavigate : null,
-      borderRadius: BorderRadius.vertical(
-        top: isFirst ? const Radius.circular(16) : Radius.zero,
-        bottom: isLast ? const Radius.circular(16) : Radius.zero,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          children: [
-            Column(
-              children: [
-                Icon(
-                  isDone ? Icons.check_circle : (type == 'PICKUP' ? Icons.circle : Icons.location_on),
-                  color: color,
-                  size: 20,
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                decoration: const BoxDecoration(
+                  color: AppColors.secondary, // Emerald green
+                  shape: BoxShape.circle,
                 ),
-                if (!isLast)
-                   Container(
-                     width: 2,
-                     height: 30, // Visual connector
-                     color: isDone ? AppColors.success.withOpacity(0.3) : AppColors.lightBorder,
-                     margin: const EdgeInsets.only(top: 4),
-                   ),
+                padding: const EdgeInsets.all(4),
+                child: const Icon(Icons.check, size: 12, color: Colors.white),
+              ),
+              if (showConnector)
+                Container(
+                  width: 2,
+                  height: 40,
+                  color: AppColors.secondary.withValues(alpha: 0.3),
+                  margin: const EdgeInsets.only(top: 4),
+                ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  type,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textTertiary,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  address,
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  city,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
               ],
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(type, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textTertiary, letterSpacing: 0.5)),
-                      if (isActive)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(4)),
-                          child: Text('Please Navigate', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(address, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                  Text(city, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            if (isActive)
-               Container(
-                 padding: const EdgeInsets.all(8),
-                 decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), shape: BoxShape.circle),
-                 child: const Icon(Icons.navigation_rounded, color: AppColors.primary, size: 20),
-               ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
 class _MemberCard extends StatelessWidget {
-  final dynamic member;
+  final String name;
+  final String? phone;
   final VoidCallback onCall;
 
-  const _MemberCard({required this.member, required this.onCall});
+  const _MemberCard({required this.name, this.phone, required this.onCall});
 
   @override
   Widget build(BuildContext context) {
@@ -523,7 +572,7 @@ class _MemberCard extends StatelessWidget {
           CircleAvatar(
             radius: 24,
             backgroundColor: AppColors.lightSurface,
-            child: Text(member.firstName[0], style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
+            child: Text(name.isNotEmpty ? name[0] : '?', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -531,13 +580,14 @@ class _MemberCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('PASSENGER', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textTertiary)),
-                Text(member.fullName, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                Text(name, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
               ],
             ),
           ),
-          IconButton(
-            onPressed: onCall,
-            icon: const Icon(Icons.phone_rounded),
+          if (phone != null)
+            IconButton(
+              onPressed: onCall,
+              icon: const Icon(Icons.phone_rounded),
             style: IconButton.styleFrom(
               backgroundColor: AppColors.success,
               foregroundColor: Colors.white,
@@ -651,7 +701,7 @@ class _ActionFooter extends StatelessWidget {
         break;
       case TripStatus.enRoute:
         label = 'Swipe to Arrive at Pickup';
-        color = AppColors.warning;
+        color = AppColors.warning; // Keeping as Warning/Blue-ish for en route
         break;
       case TripStatus.arrived:
         label = 'Swipe to Confirm Pickup';
@@ -665,6 +715,11 @@ class _ActionFooter extends StatelessWidget {
         break;
     }
 
+    // Determine the relevant time to display
+    // For pickup-related statuses, show Pickup Time. For dropoff, show intended dropoff time if available?
+    // User reference image shows "Pickup: 04:10 PM".
+    final timeText = 'Pickup: ${DateFormat('h:mm a').format(trip.scheduledPickupTime)}';
+
     return Container(
       padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.of(context).padding.bottom),
       decoration: BoxDecoration(
@@ -677,12 +732,24 @@ class _ActionFooter extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Added Time Display
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12.0),
+            child: Text(
+              timeText,
+              style: GoogleFonts.inter(
+                fontSize: 16, 
+                fontWeight: FontWeight.w700, 
+                color: AppColors.textPrimary
+              ),
+            ),
+          ),
           if (isProcessing)
              const CircularProgressIndicator()
           else
             SwipeActionButton(
               key: ValueKey(trip.status),
-              text: label,
+              text: label.toUpperCase(), // Uppercase to match reference
               color: color,
               onSwipeComplete: onSwipe,
               icon: Icons.double_arrow_rounded,

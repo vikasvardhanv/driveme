@@ -2,7 +2,7 @@ import 'package:go_router/go_router.dart';
 import 'package:yazdrive/pages/login_page.dart';
 import 'package:yazdrive/pages/driver_application_page.dart';
 import 'package:yazdrive/pages/driver/driver_dashboard_page.dart';
-import 'package:yazdrive/pages/driver/driver_trip_detail_page.dart';
+import 'package:yazdrive/pages/driver/driver_trip_detail_modern.dart';
 import 'package:yazdrive/pages/driver/vehicle_confirmation_page.dart';
 import 'package:yazdrive/pages/driver/driver_trips_page.dart';
 import 'package:yazdrive/pages/driver/driver_profile_page.dart';
@@ -78,7 +78,7 @@ class AppRouter {
         name: 'driver_trip_detail',
         pageBuilder: (context, state) {
           final tripId = state.pathParameters['tripId']!;
-          return NoTransitionPage(child: DriverTripDetailPage(tripId: tripId));
+          return NoTransitionPage(child: DriverTripDetailModernPage(tripId: tripId));
         },
       ),
       GoRoute(

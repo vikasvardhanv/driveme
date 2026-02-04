@@ -150,31 +150,36 @@ class _ScheduleTripCard extends StatelessWidget {
             ),
           ),
 
-          // Trip Info
-          Container(
-            color: AppColors.lightSurface,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.person, color: AppColors.primary, size: 24),
-                        const SizedBox(width: 8),
-                         // Member Name - TODO: Get from member data
-                        Text(
-                          'Member',
-                          style: GoogleFonts.inter(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+          // Trip Info - Tappable
+          InkWell(
+            onTap: () {
+              // Navigate to trip detail page
+              context.push('/driver/trip/${trip.id}');
+            },
+            child: Container(
+              color: AppColors.lightSurface,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.person, color: AppColors.primary, size: 24),
+                          const SizedBox(width: 8),
+                           // Member Name - TODO: Get from member data
+                          Text(
+                            'Member',
+                            style: GoogleFonts.inter(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    PopupMenuButton<String>(
+                        ],
+                      ),
+                      PopupMenuButton<String>(
                       icon: Icon(Icons.more_horiz, color: AppColors.textTertiary),
                       itemBuilder: (context) => [
                         PopupMenuItem(
@@ -264,6 +269,7 @@ class _ScheduleTripCard extends StatelessWidget {
                 const SizedBox(height: 16),
               ],
             ),
+          ),
           ),
         ],
       ),

@@ -198,6 +198,9 @@ class TripService extends ChangeNotifier {
       dropoffZip: data['dropoffZip'] ?? '',
       dropoffLatitude: data['dropoffLat']?.toDouble(),
       dropoffLongitude: data['dropoffLng']?.toDouble(),
+      customerName: data['customerName'],
+      customerPhone: data['customerPhone'],
+      customerEmail: data['customerEmail'],
       appointmentType: data['reasonForVisit'],
       facilityName: data['facilityName'],
       estimatedMiles: data['tripMiles']?.toDouble(),
@@ -352,7 +355,16 @@ class TripService extends ChangeNotifier {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));
-    return _trips.where((t) => t.driverId == driverId && t.scheduledPickupTime.isAfter(today) && t.scheduledPickupTime.isBefore(tomorrow) && t.status != TripStatus.completed && t.status != TripStatus.cancelled).toList()..sort((a, b) => a.scheduledPickupTime.compareTo(b.scheduledPickupTime));
+    
+    // Include ALL active trips (not completed/cancelled) scheduled before tomorrow. 
+    // This ensures overdue/past trips still show up in the "Today" list/count.
+    return _trips.where((t) => 
+      t.driverId == driverId && 
+      t.scheduledPickupTime.isBefore(tomorrow) && 
+      t.status != TripStatus.completed && 
+      t.status != TripStatus.cancelled &&
+      t.status != TripStatus.noShow
+    ).toList()..sort((a, b) => a.scheduledPickupTime.compareTo(b.scheduledPickupTime));
   }
 
   List<TripModel> getCompletedTripsForToday(String driverId) {
@@ -370,7 +382,12 @@ class TripService extends ChangeNotifier {
   
   List<TripModel> getUpcomingTrips(String driverId) {
     final now = DateTime.now();
-    return _trips.where((t) => t.driverId == driverId && t.scheduledPickupTime.isAfter(now) && (t.status == TripStatus.scheduled || t.status == TripStatus.assigned)).toList()..sort((a, b) => a.scheduledPickupTime.compareTo(b.scheduledPickupTime));
+    // upcoming means scheduled in the future (after now)
+    return _trips.where((t) => 
+      t.driverId == driverId && 
+      t.scheduledPickupTime.isAfter(now) && 
+      (t.status == TripStatus.scheduled || t.status == TripStatus.assigned)
+    ).toList()..sort((a, b) => a.scheduledPickupTime.compareTo(b.scheduledPickupTime));
   }
   
   List<TripModel> getUnassignedTrips() => _trips.where((t) => t.driverId == null && t.status == TripStatus.scheduled).toList()..sort((a, b) => a.scheduledPickupTime.compareTo(b.scheduledPickupTime));
@@ -633,6 +650,32 @@ class TripService extends ChangeNotifier {
       'actualPickupTime': DateTime.now().toIso8601String(),
       if (pickupOdometer != null) 'pickupOdometer': pickupOdometer,
     });
+  }
+
+  Future<void> undoLastAction(String tripId) async {
+    final trip = _trips.firstWhere((t) => t.id == tripId);
+    TripStatus newStatus = trip.status;
+    
+    switch (trip.status) {
+      case TripStatus.enRoute:
+        newStatus = TripStatus.assigned;
+        break;
+      case TripStatus.arrived:
+        newStatus = TripStatus.enRoute;
+        break;
+      case TripStatus.pickedUp:
+        newStatus = TripStatus.arrived;
+        break;
+      case TripStatus.completed: // Optional: allow undoing completion if accidental
+        newStatus = TripStatus.pickedUp;
+        break;
+      default:
+        return;
+    }
+    
+    await updateTrip(trip.copyWith(status: newStatus));
+    _emitTripStatusUpdate(tripId, newStatus);
+    _updateTripOnBackend(tripId, {'status': _mapStatusToBackendString(newStatus)});
   }
 
   Future<void> completeTrip(String tripId, {double? actualMiles, String? notes, String? driverSignature, String? memberSignature}) async {
