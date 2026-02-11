@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:yazdrive/services/user_service.dart';
 import 'package:yazdrive/services/trip_service.dart';
 import 'package:yazdrive/services/vehicle_service.dart';
+import 'package:yazdrive/services/location_service.dart';
 import 'package:yazdrive/models/trip_model.dart';
 import 'package:yazdrive/models/vehicle_model.dart';
 import 'package:yazdrive/theme.dart';
@@ -51,11 +52,12 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
     super.dispose();
   }
 
-  void _checkAndConnect() {
+  void _checkAndConnect() async {
     if (!mounted) return;
     
     final userService = context.read<UserService>();
     final tripService = context.read<TripService>();
+    final locationService = context.read<LocationService>();
     final currentUser = userService.currentUser;
 
     if (currentUser != null) {
@@ -64,6 +66,25 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
       if (!_hasFetchedData) {
         tripService.fetchTripsFromBackend(currentUser.id);
         _hasFetchedData = true;
+        
+        // Request location permissions and start tracking
+        final hasPermission = await locationService.requestLocationPermission();
+        if (hasPermission) {
+          debugPrint('Location permission granted, starting tracking');
+          await locationService.startTracking(currentUser.id);
+        } else {
+          debugPrint('Location permission denied');
+          // Show a dialog or snackbar to inform user
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Location permission is required for trip tracking. Please enable it in Settings.'),
+                duration: Duration(seconds: 5),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        }
       }
     }
   }
@@ -98,16 +119,17 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
     if (activeTrips.isNotEmpty) activeTrip = activeTrips.first;
 
     return Scaffold(
-      backgroundColor: AppColors.lightBackground,
+      backgroundColor: Colors.transparent, // Let Scaffold background show through
       drawer: const DriverDrawer(), // Add Drawer
       appBar: AppBar(
-        title: Text('OVERVIEW', style: GoogleFonts.inter(fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+        title: Text('OVERVIEW', style: GoogleFonts.inter(fontWeight: FontWeight.w700, letterSpacing: 0.5, color: Colors.white)),
         centerTitle: true,
-        backgroundColor: AppColors.lightSurface,
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded),
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
             tooltip: 'Refresh trips',
             onPressed: () => tripService.loadTrips(),
           ),
@@ -116,7 +138,7 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
       ),
       body: RefreshIndicator(
         color: AppColors.primary,
-        backgroundColor: AppColors.lightSurface,
+        backgroundColor: Colors.white,
         onRefresh: () async {
           if (currentUser != null) {
             await tripService.fetchTripsFromBackend(currentUser.id);
@@ -158,7 +180,7 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
                 children: [
                   Text(
                     'TRIP OVERVIEW', 
-                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textSecondary, letterSpacing: 0.5)
+                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white.withOpacity(0.9), letterSpacing: 0.5)
                   ),
                   InkWell(
                     onTap: () {
@@ -166,7 +188,7 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
                     },
                     child: Padding(
                       padding: const EdgeInsets.all(4.0),
-                      child: Icon(Icons.filter_list_rounded, color: AppColors.textSecondary, size: 20),
+                      child: Icon(Icons.filter_list_rounded, color: Colors.white.withOpacity(0.8), size: 20),
                     ),
                   ),
                 ],
@@ -182,7 +204,7 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
               ),
               
               const SizedBox(height: 16),
-
+ 
               // Active Trip Card (Highlighted)
               if (activeTrip != null) ...[
                 _ActiveTripCard(trip: activeTrip),
@@ -331,6 +353,17 @@ class _DriverInfoCard extends StatelessWidget {
 
   const _DriverInfoCard({required this.driver});
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'Good Morning';
+    } else if (hour < 17) {
+      return 'Good Afternoon';
+    } else {
+      return 'Good Evening';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -340,10 +373,10 @@ class _DriverInfoCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(3), // Border width
             decoration: const BoxDecoration(
-              color: AppColors.lightSurface,
+              color: Colors.white, // White border/bg for avatar to pop
               shape: BoxShape.circle,
               boxShadow: [
-                 BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+                 BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
               ],
             ),
             child: CircleAvatar(
@@ -361,11 +394,11 @@ class _DriverInfoCard extends StatelessWidget {
             children: [
               Text(
                 'Welcome, ${driver.firstName}',
-                style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary, letterSpacing: -0.5),
+                style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: -0.5),
               ),
               Text(
-                'Good Morning', // TODO: Dynamic greeting based on time
-                style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary),
+                _getGreeting(),
+                style: GoogleFonts.inter(fontSize: 14, color: Colors.white.withOpacity(0.9), fontWeight: FontWeight.w500),
               ),
             ],
           ),
@@ -373,11 +406,11 @@ class _DriverInfoCard extends StatelessWidget {
           Container(
              padding: const EdgeInsets.all(10),
              decoration: BoxDecoration(
-               color: AppColors.lightSurface,
+               color: Colors.white.withOpacity(0.2), // Semi-transparent
                shape: BoxShape.circle,
-               border: Border.all(color: AppColors.lightBorder),
+               border: Border.all(color: Colors.white.withOpacity(0.3)),
              ),
-             child: const Icon(Icons.notifications_outlined, color: AppColors.textSecondary),
+             child: const Icon(Icons.notifications_outlined, color: Colors.white),
           ),
         ],
       ),

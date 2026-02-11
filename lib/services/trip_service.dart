@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
@@ -8,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:yazdrive/models/trip_model.dart';
 import 'package:yazdrive/services/notification_service.dart';
+import 'package:yazdrive/services/api_service.dart';
 
 /// Service for managing NEMT trips with real-time sync
 class TripService extends ChangeNotifier {
@@ -18,22 +20,21 @@ class TripService extends ChangeNotifier {
   bool _isLoading = false;
   IO.Socket? _socket;
   String? _currentDriverId;
+  Timer? _pollingTimer;
+  static const Duration _pollingInterval = Duration(seconds: 30);
 
   List<TripModel> get trips => _trips;
   bool get isLoading => _isLoading;
 
   /// Get the backend API URL
-  static String get _baseUrl {
-    if (kIsWeb) return 'https://driveme-backedn-production.up.railway.app';
-    return Platform.isAndroid
-      ? 'https://driveme-backedn-production.up.railway.app'
-      : 'https://driveme-backedn-production.up.railway.app';
-  }
+  static String get _baseUrl => ApiService.baseUrl;
 
   /// Initialize WebSocket connection for real-time trip updates
   void initializeSocketConnection(String driverId) {
     if (_socket != null && _socket!.connected && _currentDriverId == driverId) {
-      return; // Already connected
+      // Already connected, but ensure polling is running
+      _startPeriodicPolling(driverId);
+      return;
     }
     
     // Disconnect existing if different driver (shouldn't happen usually but good safety)
@@ -43,18 +44,25 @@ class TripService extends ChangeNotifier {
 
     _currentDriverId = driverId;
 
+    // Start periodic polling for trips (fallback to HTTP if socket fails)
+    _startPeriodicPolling(driverId);
+
     _socket = IO.io(_baseUrl, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': true,
       'reconnection': true,
-      'reconnectionAttempts': 5,
-      'reconnectionDelay': 1000,
+      'reconnectionAttempts': 10,
+      'reconnectionDelay': 2000,
+      'reconnectionDelayMax': 10000,
+      'timeout': 10000,
     });
 
     _socket!.onConnect((_) {
       debugPrint('TripService: Socket connected');
       // Register as driver
       _socket!.emit('driverConnect', {'driverId': driverId});
+      // Fetch latest trips immediately on connection
+      fetchTripsFromBackend(driverId);
     });
 
     _socket!.on('connected', (data) {
@@ -88,11 +96,33 @@ class TripService extends ChangeNotifier {
       debugPrint('TripService: Socket disconnected');
     });
 
+    _socket!.onReconnect((data) {
+      debugPrint('TripService: Socket reconnected');
+      // Fetch latest trips on reconnection
+      if (_currentDriverId != null) {
+        fetchTripsFromBackend(_currentDriverId!);
+      }
+    });
+
     _socket!.onError((error) {
       debugPrint('TripService: Socket error: $error');
     });
 
     _socket!.connect();
+  }
+
+  /// Start periodic polling to keep trips in sync
+  void _startPeriodicPolling(String driverId) {
+    // Cancel existing timer if any
+    _pollingTimer?.cancel();
+    
+    // Create new timer
+    _pollingTimer = Timer.periodic(_pollingInterval, (timer) {
+      debugPrint('TripService: Periodic polling - fetching trips');
+      fetchTripsFromBackend(driverId);
+    });
+    
+    debugPrint('TripService: Started periodic polling every ${_pollingInterval.inSeconds}s');
   }
 
   void _handleTripAssignment(dynamic data) {
@@ -252,10 +282,13 @@ class TripService extends ChangeNotifier {
 
   /// Disconnect WebSocket
   void disconnectSocket() {
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
     _socket?.disconnect();
     _socket?.dispose();
     _socket = null;
     _currentDriverId = null;
+    debugPrint('TripService: Socket disconnected and polling stopped');
   }
 
   /// Emit trip status update via WebSocket
@@ -408,7 +441,7 @@ class TripService extends ChangeNotifier {
         _trips = [];
       }
     } catch (e) {
-      debugPrint('Failed to load trips: \$e');
+      debugPrint('Failed to load trips: $e');
       _trips = [];
     } finally {
       _isLoading = false;
@@ -429,7 +462,7 @@ class TripService extends ChangeNotifier {
       final String encoded = jsonEncode(_trips.map((t) => t.toJson()).toList());
       await prefs.setString(_storageKey, encoded);
     } catch (e) {
-      debugPrint('Failed to save trips: \$e');
+      debugPrint('Failed to save trips: $e');
     }
   }
   
@@ -790,7 +823,14 @@ class TripService extends ChangeNotifier {
     });
   }
   
+  
   TripModel? getTripById(String id) => _trips.firstWhere((t) => t.id == id, orElse: () => _trips.first);
   
   String createTripId() => _uuid.v4();
+
+  @override
+  void dispose() {
+    disconnectSocket();
+    super.dispose();
+  }
 }

@@ -42,13 +42,14 @@ class _DriverTripsPageState extends State<DriverTripsPage> {
     final doneTrips = myTrips.where((t) => t.status == TripStatus.completed).toList();
 
     return Scaffold(
-      backgroundColor: AppColors.lightBackground,
+      backgroundColor: Colors.transparent, // Transparent for global background
       drawer: const DriverDrawer(),
       appBar: AppBar(
         title: Text('SCHEDULE', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 18, color: Colors.white, letterSpacing: 1.0)),
         centerTitle: true,
-        backgroundColor: AppColors.primary,
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
            TextButton(
              onPressed: () => context.go('/driver/dashboard'),
@@ -62,7 +63,7 @@ class _DriverTripsPageState extends State<DriverTripsPage> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 8),
-            color: AppColors.primaryDark,
+            color: AppColors.primary.withOpacity(0.9), // Slightly transparent
             child: Text(
               'ACTIVE TRIPS: $activeTripsCount',
               textAlign: TextAlign.center,
@@ -76,7 +77,7 @@ class _DriverTripsPageState extends State<DriverTripsPage> {
                 if (activeOrScheduled.isEmpty && doneTrips.isEmpty)
                    Padding(
                      padding: const EdgeInsets.all(32.0),
-                     child: Center(child: Text('No trips found', style: GoogleFonts.inter(color: AppColors.textSecondary))),
+                     child: Center(child: Text('No trips found', style: GoogleFonts.inter(color: Colors.white70))),
                    ),
 
                 // Active/Scheduled List
@@ -86,12 +87,12 @@ class _DriverTripsPageState extends State<DriverTripsPage> {
                 if (doneTrips.isNotEmpty)
                   Container(
                     width: double.infinity,
-                    color: AppColors.lightSurfaceVariant,
+                    color: Colors.black.withOpacity(0.3), // Darker divider for contrast
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Text(
                       'Done Trips',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
                     ),
                   ),
                   
@@ -129,7 +130,7 @@ class _ScheduleTripCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('hh:mm a');
+    final dateFormat = DateFormat('hst:mm a');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 1),
@@ -168,9 +169,9 @@ class _ScheduleTripCard extends StatelessWidget {
                         children: [
                           const Icon(Icons.person, color: AppColors.primary, size: 24),
                           const SizedBox(width: 8),
-                           // Member Name - TODO: Get from member data
+                           // Member Name
                           Text(
-                            'Member',
+                            trip.customerName ?? 'Guest Member', // Real data
                             style: GoogleFonts.inter(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
@@ -204,10 +205,10 @@ class _ScheduleTripCard extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text('Trip ID:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-                                  Text(trip.id, style: GoogleFonts.robotoMono(fontWeight: FontWeight.w500)),
+                                  Text(trip.tripNumber?.toString() ?? trip.id, style: GoogleFonts.robotoMono(fontWeight: FontWeight.w500)), // Real data
                                   const SizedBox(height: 12),
                                   Text('Scheduled Pickup:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-                                  Text(dateFormat.format(trip.scheduledPickupTime), style: GoogleFonts.inter()),
+                                  Text(DateFormat('h:mm a').format(trip.scheduledPickupTime), style: GoogleFonts.inter()),
                                   const SizedBox(height: 12),
                                   Text('Full Pickup Address:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
                                   Text(trip.pickupAddress, style: GoogleFonts.inter()),
@@ -231,7 +232,7 @@ class _ScheduleTripCard extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.only(left: 32),
                     child: Text(
-                      'Member #${trip.memberId.length >= 8 ? trip.memberId.substring(0, 8) : trip.memberId}',
+                      'Member #${trip.membershipId.isNotEmpty ? trip.membershipId : (trip.memberId.length >= 8 ? trip.memberId.substring(0, 8) : trip.memberId)}', // Real data
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         color: AppColors.textSecondary,
@@ -258,7 +259,7 @@ class _ScheduleTripCard extends StatelessWidget {
                            ),
                            const SizedBox(height: 4),
                            Text(
-                             'Pickup: ${dateFormat.format(trip.scheduledPickupTime)}',
+                             'Pickup: ${DateFormat('h:mm a').format(trip.scheduledPickupTime)}',
                              style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
                            ),
                          ],
@@ -302,14 +303,14 @@ class _DoneTripCard extends StatelessWidget {
                        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary), 
                      ),
                      TextSpan(
-                       text: 'G. MEMBER',
+                       text: trip.customerName ?? 'Guest', // Real data
                        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
                      ),
                    ],
                  ),
               ),
               Text(
-                'Trip #${trip.id.length >= 7 ? trip.id.substring(0, 7) : trip.id}',
+                'Trip #${trip.tripNumber?.toString() ?? (trip.id.length >= 7 ? trip.id.substring(0, 7) : trip.id)}', // Real ID/Number
                 style: GoogleFonts.inter(fontSize: 12, color: AppColors.textTertiary),
               ),
             ],

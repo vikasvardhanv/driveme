@@ -261,15 +261,15 @@ class _DriverTripDetailModernPageState extends State<DriverTripDetailModernPage>
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text('Trip Details', style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: Colors.white)),
+        title: Text('Trip Details', style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         actions: [
           if (trip.status != TripStatus.completed && trip.status != TripStatus.cancelled)
             PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
+              icon: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary),
               itemBuilder: (context) => [
                 if (trip.status == TripStatus.enRoute || trip.status == TripStatus.arrived || trip.status == TripStatus.pickedUp)
                   PopupMenuItem(

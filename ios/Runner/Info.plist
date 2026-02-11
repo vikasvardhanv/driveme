@@ -38,11 +38,20 @@
 	<string>This app needs access to location when in the background to track your trip progress.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app needs access to location when in use to track your trip progress.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to your photo library to upload profile pictures or trip documentation.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs access to your camera to take photos for trip documentation.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs access to your microphone for voice features.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
+		<string>fetch</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:yazdrive/services/api_service.dart';
 
 /// Azuga vehicle location data from webhook
 class AzugaVehicleLocation {
@@ -85,8 +86,8 @@ class LocationService extends ChangeNotifier {
   // Initialize socket connection
   void initSocket(String userId) {
     _currentUserId = userId;
-    // Use production URL by default
-    String socketUrl = 'https://driveme-backedn-production.up.railway.app';
+    // Use production URL from ApiService
+    String socketUrl = ApiService.baseUrl;
 
     _socket = IO.io(socketUrl, <String, dynamic>{
       'transports': ['websocket'],
@@ -141,6 +142,61 @@ class LocationService extends ChangeNotifier {
     }
   }
 
+  /// Request location permissions proactively (call at login/app start)
+  /// Requests "Always" permission for background location tracking
+  Future<bool> requestLocationPermission() async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      
+      debugPrint('Current location permission: $permission');
+      
+      // If denied, request permission
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        debugPrint('After request, permission is: $permission');
+      }
+      
+      // If permission is deniedForever, user needs to enable in settings
+      if (permission == LocationPermission.deniedForever) {
+        debugPrint('⚠️ Location permission denied forever. User must enable in Settings.');
+        return false;
+      }
+      
+      // If still denied after request
+      if (permission == LocationPermission.denied) {
+        debugPrint('⚠️ Location permission denied by user.');
+        return false;
+      }
+      
+      // If we have whileInUse, we need to prompt for Always permission for background tracking
+      if (permission == LocationPermission.whileInUse) {
+        debugPrint('ℹ️ Have "While in Use" permission. For background tracking, we need "Always" permission.');
+        debugPrint('ℹ️ Note: iOS will automatically prompt user to upgrade to "Always" after some time using the app.');
+        // On iOS, you can't directly request "Always" - user gets prompted after using "When in Use"
+        // The prompt appears automatically after the app has been used with location for a while
+      }
+      
+      debugPrint('✅ Location permission granted: $permission');
+      return true;
+    } catch (e) {
+      debugPrint('❌ Error requesting location permission: $e');
+      return false;
+    }
+  }
+
+  /// Check if location permissions are granted (either whileInUse or always)
+  Future<bool> hasLocationPermission() async {
+    final permission = await Geolocator.checkPermission();
+    return permission == LocationPermission.always || 
+           permission == LocationPermission.whileInUse;
+  }
+  
+  /// Check if we have background location permission (always)
+  Future<bool> hasBackgroundPermission() async {
+    final permission = await Geolocator.checkPermission();
+    return permission == LocationPermission.always;
+  }
+
   Future<void> startTracking(String userId) async {
     if (_isTracking) return;
 
@@ -159,16 +215,50 @@ class LocationService extends ChangeNotifier {
     _isTracking = true;
     notifyListeners();
 
+    // Configure location settings for background tracking
+    LocationSettings locationSettings;
+    
+    if (Platform.isIOS) {
+      // iOS-specific settings for background location
+      locationSettings = AppleSettings(
+        accuracy: LocationAccuracy.high,
+        activityType: ActivityType.automotiveNavigation, // Optimized for driving
+        distanceFilter: 10, // Update every 10 meters
+        pauseLocationUpdatesAutomatically: false, // Keep tracking even when stationary
+        showBackgroundLocationIndicator: true, // Show blue bar when using location in background
+      );
+      debugPrint('🚗 Started iOS location tracking with automotive navigation mode');
+    } else if (Platform.isAndroid) {
+      // Android-specific settings
+      locationSettings = AndroidSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 10,
+        forceLocationManager: false,
+        intervalDuration: const Duration(seconds: 5),
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationText: "Drivemeyaz is tracking your location for trip tracking",
+          notificationTitle: "Trip Tracking Active",
+          enableWakeLock: true,
+        ),
+      );
+      debugPrint('🚗 Started Android location tracking with foreground service');
+    } else {
+      // Default settings for other platforms
+      locationSettings = const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 10,
+      );
+      debugPrint('🚗 Started location tracking with default settings');
+    }
+
     // Start listening to position updates
     _positionStreamSubscription = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 10, // Update every 10 meters
-      ),
+      locationSettings: locationSettings,
     ).listen((Position position) {
       _currentPosition = position;
       _sendLocationUpdate(userId, position);
       notifyListeners();
+      debugPrint('📍 Location update: ${position.latitude}, ${position.longitude} - Speed: ${position.speed}m/s');
     });
   }
 

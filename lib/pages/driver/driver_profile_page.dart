@@ -24,8 +24,12 @@ class DriverProfilePage extends StatelessWidget {
     }
 
     return Scaffold(
+      backgroundColor: Colors.transparent, // Transparent for global background
       appBar: AppBar(
-        title: const Text('Driver Profile'),
+        title: const Text('Driver Profile', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/driver/dashboard'),
@@ -95,9 +99,11 @@ class DriverProfilePage extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.lightSurface,
+                color: Colors.white, // Opaque container for readability
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.lightBorder),
+                boxShadow: [
+                   BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+                ],
               ),
               child: Column(
                 children: [

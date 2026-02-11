@@ -20,12 +20,34 @@ class DriverScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: navigationShell,
+      // Background stack for global theme
+      body: Stack(
+        children: [
+          // 1. Background Image
+          Positioned.fill(
+            child: Image.network(
+              'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=2070&auto=format&fit=crop',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(color: AppColors.darkBackground),
+            ),
+          ),
+          
+          // 2. Dark Overlay
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withOpacity(0.75), // Consistent dark overlay
+            ),
+          ),
+
+          // 3. Navigation Content (Pages)
+          navigationShell,
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(0.2), // Darker shadow for depth
               blurRadius: 10,
               offset: const Offset(0, -4),
             ),
@@ -34,7 +56,7 @@ class DriverScaffold extends StatelessWidget {
         child: NavigationBar(
           selectedIndex: navigationShell.currentIndex,
           onDestinationSelected: _onTap,
-          backgroundColor: Colors.white,
+          backgroundColor: Colors.white, // Keep nav bar white for contrast
           indicatorColor: AppColors.primary.withOpacity(0.1),
           height: 65,
           destinations: const [

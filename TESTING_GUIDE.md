@@ -35,21 +35,15 @@ xcrun simctl boot "iPhone 15 Pro"
 open -a Simulator
 ```
 
-### Run the App
-
-**For Local Backend Testing:**
+**For Production Backend (Default):**
 ```bash
 cd /Users/vikashvardhan/Downloads/driveme
 
-# Run with local backend (http://localhost:3001)
+# Run with production backend (https://backend.yaztrans.com)
 flutter run -d ios
 ```
 
-**For Production Backend Testing:**
-```bash
-# Run with production Railway backend
-flutter run --dart-define=USE_PRODUCTION=true -d ios
-```
+*Note: The app is now set to production by default in `ApiService.dart`.*
 
 ### Hot Reload During Development
 - Press `r` in terminal to hot reload
@@ -90,7 +84,7 @@ Check that:
 ### API Endpoint
 ```bash
 # Test signup endpoint directly
-curl -X POST https://driveme-backedn-production.up.railway.app/auth/signup \
+curl -X POST https://backend.yaztrans.com/auth/signup \
   -H "Content-Type: application/json" \
   -d '{
     "email": "test.driver@example.com",
@@ -115,14 +109,14 @@ curl -X POST https://driveme-backedn-production.up.railway.app/auth/signup \
 
 ### Step 1: Unpause Webhook in Azuga Dashboard
 1. Go to: https://fleet.azuga.com/admin/webhooks
-2. Find webhook: `Railway_connect`
+2. Find webhook: `Coolify_connect` (or your specific webhook name)
 3. **Unpause** the webhook if it's currently paused
 
 ### Step 2: Test Webhook Manually
 
 **Using cURL:**
 ```bash
-curl -X POST https://driveme-backedn-production.up.railway.app/azuga/webhook \
+curl -X POST https://backend.yaztrans.com/azuga/webhook \
   -H "Content-Type: application/json" \
   -u "your-username:your-password" \
   -d '{
@@ -145,10 +139,12 @@ curl -X POST https://driveme-backedn-production.up.railway.app/azuga/webhook \
 
 ### Step 3: Check Backend Logs
 ```bash
-# If deployed on Railway, check logs
-railway logs --service backend
+# Check logs on your deployment server (e.g., Coolify or VPS)
+# For example, if using Docker:
+docker logs backend
+```
 
-# Look for:
+Look for:
 "Received Azuga Webhook: ..."
 "Found Vehicle: <vehicle-id> (Driver: <driver-id>)"
 "Updated Vehicle <vehicle-id> coordinates to ..."
@@ -186,7 +182,7 @@ railway logs --service backend
 
 **Step 1: Create a Test Trip**
 ```bash
-curl -X POST https://driveme-backedn-production.up.railway.app/trips \
+curl -X POST https://backend.yaztrans.com/trips \
   -H "Content-Type: application/json" \
   -d '{
     "pickupAddress": "123 Main St, Phoenix, AZ 85001",
@@ -209,7 +205,7 @@ curl -X POST https://driveme-backedn-production.up.railway.app/trips \
 
 **Step 2: Complete the Trip**
 ```bash
-curl -X PATCH https://driveme-backedn-production.up.railway.app/trips/<trip-id> \
+curl -X PATCH https://backend.yaztrans.com/trips/<trip-id> \
   -H "Content-Type: application/json" \
   -d '{
     "status": "COMPLETED",
@@ -233,7 +229,7 @@ curl -X PATCH https://driveme-backedn-production.up.railway.app/trips/<trip-id> 
 
 ```bash
 # Generate PDF manually for any trip
-curl -X POST https://driveme-backedn-production.up.railway.app/trips/<trip-id>/generate-report \
+curl -X POST https://backend.yaztrans.com/trips/<trip-id>/generate-report \
   -o trip-report.pdf
 
 # This downloads the PDF directly
@@ -329,7 +325,7 @@ npm run start:dev
 - ✅ Vehicle VIN exists in database
 - ✅ Vehicle has assigned driver
 - ✅ Basic Auth credentials are correct
-- ✅ Backend is accessible from internet (Railway URL)
+- ✅ Backend is accessible from internet (Coolify URL)
 
 ### Issue 3: PDF Generation Fails
 **Common Causes:**
@@ -343,7 +339,7 @@ npm run start:dev
 ls -l /Users/vikashvardhan/Downloads/driveme/backend/templates/
 
 # Check backend logs for specific error
-railway logs --service backend | grep "PDF"
+# (e.g., docker logs backend | grep "PDF")
 ```
 
 ### Issue 4: Email Not Sending
@@ -408,7 +404,7 @@ AZUGA_CLIENT_SECRET=<your-client-secret>
 
 ### Admin Web (.env.local)
 ```env
-NEXT_PUBLIC_API_URL=https://driveme-backedn-production.up.railway.app
+NEXT_PUBLIC_API_URL=https://backend.yaztrans.com
 NEXT_PUBLIC_SUPABASE_URL=https://hrlnevacotasdxxmhgxe.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=sb_publishable_7HkgTyG2UhWO_UZYXJeZFA_y_0GHpDS
 ```
@@ -424,12 +420,12 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=sb_publishable_7HkgTyG2UhWO_UZYXJeZ
 - [ ] Test PDF generation with real data
 - [ ] Verify email delivery
 
-### Backend Deployment (Railway)
+### Backend Deployment (Coolify/VPS)
 - [ ] Push latest code to GitHub
-- [ ] Railway auto-deploys from main branch
-- [ ] Set environment variables in Railway dashboard
+- [ ] Server auto-deploys from main branch
+- [ ] Set environment variables in Server dashboard
 - [ ] Run database migration: `npx prisma db push`
-- [ ] Verify deployment: `railway logs`
+- [ ] Verify deployment: Check server logs
 
 ### Admin Web Deployment (Vercel/Netlify)
 - [ ] Push to GitHub
@@ -499,7 +495,7 @@ POST /azuga/webhook
    - Verify PDF generation and email delivery
 
 6. **Production Deployment**
-   - Deploy backend to Railway
+   - Deploy backend to Coolify
    - Deploy admin-web to Vercel/Netlify
    - Submit mobile app to App Store
 

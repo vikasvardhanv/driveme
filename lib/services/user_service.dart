@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:http/http.dart' as http;
 import 'package:yazdrive/models/user_model.dart';
+import 'package:yazdrive/services/api_service.dart';
 
 /// Service for managing users (drivers, dispatchers, admins, members)
 class UserService extends ChangeNotifier {
@@ -13,17 +14,7 @@ class UserService extends ChangeNotifier {
   static const String _tokenKey = 'auth_token';
 
    // Dynamic Base URL
-  static String get _baseUrl {
-    // Use production URL if needed, otherwise use local
-    const useProduction = bool.fromEnvironment('USE_PRODUCTION', defaultValue: true);
-
-    if (useProduction) {
-      return 'https://driveme-backedn-production.up.railway.app';
-    }
-
-    if (kIsWeb) return 'http://localhost:3001';
-    return Platform.isAndroid ? 'http://10.0.2.2:3001' : 'http://localhost:3001';
-  } 
+  static String get _baseUrl => ApiService.baseUrl;
 
   final Uuid _uuid = const Uuid();
   
@@ -63,7 +54,7 @@ class UserService extends ChangeNotifier {
     // Basic fallback data if needed
   }
   
-  Future<UserModel?> login(String email, String password, String role) async {
+  Future<UserModel?> login(String email, String password, [String role = 'DRIVER']) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/auth/login'),

@@ -97,22 +97,16 @@ Database (PostgreSQL) is running and connected to backend
 Flutter installed on your machine
 For Android: Android Studio + Java/Kotlin setup
 For iOS: Xcode + macOS machine + Apple Developer Account
-Step 1: Configure Backend URL
-Update the API endpoint in lib/services/user_service.dart:16-19:
+Update the API endpoint in `lib/services/api_service.dart`:
 
-Currently it points to localhost:
+The app is now configured to use the production URL by default:
 
+```dart
+static const String _productionUrl = 'https://backend.yaztrans.com';
+static String get baseUrl => _productionUrl;
+```
 
-static String get _baseUrl {
-  if (kIsWeb) return 'http://localhost:3001';
-  return Platform.isAndroid ? 'http://10.0.2.2:3001' : 'http://localhost:3001';
-}
-Change to your deployed backend URL:
-
-
-static String get _baseUrl {
-  return 'https://api.yourdomain.com'; // Replace with your actual backend URL
-}
+All other services (`UserService`, `TripService`, `LocationService`) already reference `ApiService.baseUrl` for consistency.
 Do the same for any other services that connect to the backend (check trip_service.dart, vehicle_service.dart, location_service.dart).
 
 Step 2: Configure Android App
@@ -209,6 +203,11 @@ Archive in Xcode
 Upload to App Store Connect
 Submit for review
 Once approved, release to App Store
+### App Store Reviewer Credentials
+For Apple Store submission, use the following account for testing:
+- **Email**: `driver@yazdrive.com`
+- **Password**: `DriveMe2026!`
+
 Step 4: Test the Deployment
 Install the app on a real device
 Verify backend connection:

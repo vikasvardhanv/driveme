@@ -100,11 +100,11 @@ The setup guide includes:
    git push
    ```
 
-2. Railway will auto-deploy the changes
+2. Coolify will auto-deploy the changes
 
 3. Verify webhook is working:
    ```bash
-   # Check Railway logs for:
+   # Check Coolify logs for:
    # - "Processing Azuga event: Trip Start"
    # - "Set pickup odometer for trip..."
    # - "Calculated trip miles: ..."
@@ -147,7 +147,7 @@ The setup guide includes:
 ## Next Steps
 
 ### High Priority
-1. **Deploy backend changes** to Railway
+1. **Deploy backend changes** to Coolify
 2. **Test with real trip** to verify odometer capture
 3. **Fix map coordinates** - verify admin web geocoding
 
@@ -163,7 +163,7 @@ The setup guide includes:
 ## Questions?
 
 If you encounter issues:
-1. Check backend logs in Railway dashboard
+1. Check backend logs in Coolify dashboard
 2. Review `/docs/AZUGA_WEBHOOK_SETUP.md` for troubleshooting
 3. Verify webhook URL is configured in Azuga dashboard
 

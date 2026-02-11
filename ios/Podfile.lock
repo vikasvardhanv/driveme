@@ -52,9 +52,6 @@ PODS:
     - GoogleMaps/Base
   - image_picker_ios (0.0.1):
     - Flutter
-  - path_provider_foundation (0.0.1):
-    - Flutter
-    - FlutterMacOS
   - printing (1.0.0):
     - Flutter
   - SDWebImage (5.21.5):
@@ -76,7 +73,6 @@ DEPENDENCIES:
   - geolocator_apple (from `.symlinks/plugins/geolocator_apple/darwin`)
   - google_maps_flutter_ios (from `.symlinks/plugins/google_maps_flutter_ios/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
-  - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - printing (from `.symlinks/plugins/printing/ios`)
   - share_plus (from `.symlinks/plugins/share_plus/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
@@ -104,8 +100,6 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/google_maps_flutter_ios/ios"
   image_picker_ios:
     :path: ".symlinks/plugins/image_picker_ios/ios"
-  path_provider_foundation:
-    :path: ".symlinks/plugins/path_provider_foundation/darwin"
   printing:
     :path: ".symlinks/plugins/printing/ios"
   share_plus:
@@ -123,17 +117,16 @@ SPEC CHECKSUMS:
   flutter_local_notifications: 395056b3175ba4f08480a7c5de30cd36d69827e4
   geolocator_apple: ab36aa0e8b7d7a2d7639b3b4e48308394e8cef5e
   Google-Maps-iOS-Utils: 66d6de12be1ce6d3742a54661e7a79cb317a9321
-  google_maps_flutter_ios: 3213e1e5f5588b6134935cb8fc59acb4e6d88377
+  google_maps_flutter_ios: 17552876e72723da1d41accc22f03b5f7afbde69
   GoogleMaps: 8939898920281c649150e0af74aa291c60f2e77d
-  image_picker_ios: 7fe1ff8e34c1790d6fff70a32484959f563a928a
-  path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
+  image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326
   printing: 54ff03f28fe9ba3aa93358afb80a8595a071dd07
   SDWebImage: e9c98383c7572d713c1a0d7dd2783b10599b9838
   share_plus: 50da8cb520a8f0f65671c6c6a99b3617ed10a58a
-  shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
+  shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
   SwiftyGif: 706c60cf65fa2bc5ee0313beece843c8eb8194d4
-  url_launcher_ios: 694010445543906933d732453a59da0a173ae33d
+  url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
 
-PODFILE CHECKSUM: 6c01055ff966e40e8862373e66668a0fbf0b7ba8
+PODFILE CHECKSUM: 846712ba6494b5d5941c3acda894c27738f2eb71
 
 COCOAPODS: 1.16.2

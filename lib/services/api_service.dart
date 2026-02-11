@@ -8,16 +8,7 @@ class ApiService {
   // Use production URL (Coolify deployment)
   static const String _productionUrl = 'https://backend.yaztrans.com';
 
-  static String get baseUrl {
-    // Override for development if needed, but default to production as requested
-    const bool useProduction = true;
-
-    if (useProduction) return _productionUrl;
-
-    if (kIsWeb) return 'http://localhost:3000';
-    if (Platform.isAndroid) return 'http://10.0.2.2:3000';
-    return 'http://localhost:3000';
-  }
+  static String get baseUrl => _productionUrl;
 
   Future<Map<String, String>> _getHeaders() async {
     final prefs = await SharedPreferences.getInstance();
@@ -26,7 +17,7 @@ class ApiService {
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      if (token != null) 'Authorization': 'Bearer \$token',
+      if (token != null) 'Authorization': 'Bearer $token',
     };
   }
 
@@ -53,14 +44,14 @@ class ApiService {
     try {
       final headers = await _getHeaders();
       final response = await http.post(
-        Uri.parse('\$baseUrl\$endpoint'),
+        Uri.parse('$baseUrl$endpoint'),
         headers: headers,
         body: jsonEncode(body),
       );
       
       return _handleResponse(response);
     } catch (e) {
-      throw Exception('Network error: \$e');
+      throw Exception('Network error: $e');
     }
   }
 
@@ -68,7 +59,7 @@ class ApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('API Error: \${response.statusCode} - \${response.body}');
+      throw Exception('API Error: ${response.statusCode} - ${response.body}');
     }
   }
 }

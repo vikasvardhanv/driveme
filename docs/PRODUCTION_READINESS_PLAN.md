@@ -7,12 +7,12 @@
 ## ✅ FIXES APPLIED (Just Now)
 
 ### 1. Database Schema Sync
-**Status**: Deploying to Railway now
+**Status**: Deploying to Coolify now
 
 **What was done:**
 - Added `url = env("DATABASE_URL")` to Prisma schema
 - Updated `postinstall` script to automatically run `prisma db push --accept-data-loss`
-- Every Railway deployment will now auto-sync database schema
+- Every Coolify deployment will now auto-sync database schema
 
 **Result**: Trip assignments will work once deployed (2-3 minutes)
 
@@ -58,7 +58,7 @@ Already working - returns all vehicles from database
 ## 🚀 IMMEDIATE TESTING (After Deployment)
 
 ### Test 1: Verify Database Sync
-1. Wait 2-3 minutes for Railway deployment
+1. Wait 2-3 minutes for Coolify deployment
 2. Try assigning a trip in admin web
 3. Should work without 500 error
 
@@ -399,7 +399,7 @@ async sendTripAssignment(driverId: string, trip: Trip) {
 ## 🎯 PRODUCTION DEPLOYMENT STEPS
 
 ### Step 1: Verify Current Deployment (ONGOING)
-- Railway is deploying now
+- Coolify is deploying now
 - Wait 2-3 minutes
 - Check logs for "Prisma schema synced to database"
 
@@ -450,7 +450,7 @@ Follow "Scenario 1: Complete Trip Workflow" above
 ## 📝 NEXT ACTIONS
 
 ### Immediate (This Session)
-1. ✅ Wait for Railway deployment to finish
+1. ✅ Wait for Coolify deployment to finish
 2. ⏳ Test trip assignment in admin web
 3. ⏳ Verify drivers/vehicles endpoints return data
 4. ⏳ Review Azuga webhook logs
@@ -499,4 +499,4 @@ POST /api/azuga/sync-drivers    # Manual sync
 
 ---
 
-**Status**: Railway deployment in progress. Test trip assignment in 2-3 minutes.
+**Status**: Coolify deployment in progress. Test trip assignment in 2-3 minutes.

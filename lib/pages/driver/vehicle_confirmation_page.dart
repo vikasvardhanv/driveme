@@ -74,221 +74,213 @@ class _VehicleConfirmationPageState extends State<VehicleConfirmationPage> {
         : vehicleService.searchVehicles(_searchQuery);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.darkBackground, // Fallback
       drawer: const DriverDrawer(),
-      appBar: AppBar(
-        title: Text('VEHICLE SELECTION', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 18, color: Colors.white)),
-        centerTitle: true,
-        backgroundColor: AppColors.primary,
-        elevation: 0,
-        actions: [
-          TextButton(
-             onPressed: () => context.go('/driver/dashboard'),
-             child: Text('Overview', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
-          )
-        ],
-      ),
-      body: Column(
+      body: Stack(
         children: [
-          // Header Image & Text
-          Stack(
-            children: [
-              Container(
-                height: 200,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [AppColors.primary, AppColors.primaryDark],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-              ),
-              Positioned.fill(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.directions_car_rounded, size: 56, color: Colors.white.withOpacity(0.9)),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Which vehicle are you driving?',
-                      style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(height: 3, width: 60, color: AppColors.secondary),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          // Selection Input
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-            color: AppColors.lightBackground,
-            width: double.infinity,
-            child: Text(
-              'SELECT YOUR VEHICLE',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: AppColors.textPrimary, letterSpacing: 0.5, fontSize: 13),
+          // 1. Background Image
+          Positioned.fill(
+            child: Image.network(
+              'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=2070&auto=format&fit=crop',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(color: AppColors.darkBackground),
             ),
           ),
-
-          Padding(
-            padding: const EdgeInsets.all(20),
+          
+          // 2. Dark Overlay
+          Positioned.fill(
             child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: AppColors.primary, width: 2),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                style: GoogleFonts.inter(fontSize: 16, color: AppColors.textPrimary, fontWeight: FontWeight.w500),
-                decoration: InputDecoration(
-                  hintText: 'Enter license plate or vehicle number',
-                  hintStyle: GoogleFonts.inter(color: AppColors.textTertiary, fontSize: 15),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.all(18),
-                  prefixIcon: Icon(Icons.search, color: AppColors.primary, size: 24),
-                ),
-                onChanged: _onSearchChanged,
-              ),
+              color: Colors.black.withOpacity(0.7), // Slightly darker for readability
             ),
           ),
 
-          // Suggestions List or Empty State
-          Expanded(
-            child: _searchQuery.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.search, size: 64, color: AppColors.textDisabled),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Start typing to search vehicles',
-                          style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.w600),
+          // 3. Content
+          SafeArea(
+            child: Column(
+              children: [
+                // Custom AppBar content
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Builder(builder: (context) => IconButton(
+                        icon: const Icon(Icons.menu, color: Colors.white),
+                        onPressed: () => Scaffold.of(context).openDrawer(),
+                      )),
+                      Expanded(
+                        child: Text(
+                          'VEHICLE SELECTION',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 18, color: Colors.white),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Search by license plate, VIN, or vehicle name',
-                          style: GoogleFonts.inter(color: AppColors.textTertiary, fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  )
-                : filteredVehicles.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.no_crash_outlined, size: 64, color: AppColors.textDisabled),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No vehicles found',
-                              style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.w600),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Try a different search term',
-                              style: GoogleFonts.inter(color: AppColors.textTertiary, fontSize: 14),
-                            ),
-                          ],
-                        ),
+                      ),
+                      TextButton(
+                         onPressed: () => context.go('/driver/dashboard'),
+                         child: Text('Overview', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
                       )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        itemCount: filteredVehicles.length,
-                        itemBuilder: (context, index) {
-                          final vehicle = filteredVehicles[index];
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppColors.lightBorder),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.04),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
+                    ],
+                  ),
+                ),
+
+                Expanded(
+                  child: Column(
+                    children: [
+                       const SizedBox(height: 20),
+                       // Header Text
+                      Icon(Icons.directions_car_rounded, size: 56, color: Colors.white.withOpacity(0.9)),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Which vehicle are you driving?',
+                        style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      Container(height: 3, width: 60, color: AppColors.secondary),
+                      
+                      const SizedBox(height: 32),
+
+                      // Search Box
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: TextField(
+                            controller: _searchController,
+                            style: GoogleFonts.inter(fontSize: 16, color: AppColors.textPrimary, fontWeight: FontWeight.w500),
+                            decoration: InputDecoration(
+                              hintText: 'Enter license plate or vehicle number',
+                              hintStyle: GoogleFonts.inter(color: AppColors.textTertiary, fontSize: 15),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.all(18),
+                              prefixIcon: Icon(Icons.search, color: AppColors.primary, size: 24),
                             ),
-                            child: Material(
-                              color: Colors.transparent,
-                              borderRadius: BorderRadius.circular(16),
-                              child: InkWell(
-                                onTap: () => _onVehicleSelected(vehicle, vehicleService),
-                                borderRadius: BorderRadius.circular(16),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 56,
-                                        height: 56,
+                            onChanged: _onSearchChanged,
+                          ),
+                        ),
+                      ),
+
+                      // Suggestions List or Empty State
+                      Expanded(
+                        child: _searchQuery.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.search, size: 64, color: Colors.white30),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Start typing to search vehicles',
+                                      style: GoogleFonts.inter(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : filteredVehicles.isEmpty
+                                ? Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.no_crash_outlined, size: 64, color: Colors.white30),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'No vehicles found',
+                                          style: GoogleFonts.inter(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w600),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                                    itemCount: filteredVehicles.length,
+                                    itemBuilder: (context, index) {
+                                      final vehicle = filteredVehicles[index];
+                                      return Container(
+                                        margin: const EdgeInsets.only(bottom: 12),
                                         decoration: BoxDecoration(
-                                          color: AppColors.primaryContainer,
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: Icon(
-                                          vehicle.wheelchairAccessible
-                                              ? Icons.accessible_forward_rounded
-                                              : Icons.directions_car_rounded,
-                                          color: AppColors.primary,
-                                          size: 28,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              vehicle.licensePlate,
-                                              style: GoogleFonts.inter(
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 16,
-                                                color: AppColors.textPrimary,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              '${vehicle.year} ${vehicle.make} ${vehicle.model}',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                color: AppColors.textSecondary,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              vehicle.color,
-                                              style: GoogleFonts.inter(
-                                                fontSize: 12,
-                                                color: AppColors.textTertiary,
-                                              ),
+                                          color: Colors.white.withOpacity(0.9), // Semi-transparent card
+                                          borderRadius: BorderRadius.circular(16),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.1),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
                                             ),
                                           ],
                                         ),
-                                      ),
-                                      Icon(Icons.arrow_forward_ios, color: AppColors.primary, size: 20),
-                                    ],
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          borderRadius: BorderRadius.circular(16),
+                                          child: InkWell(
+                                            onTap: () => _onVehicleSelected(vehicle, vehicleService),
+                                            borderRadius: BorderRadius.circular(16),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(16),
+                                              child: Row(
+                                                children: [
+                                                  Container(
+                                                    width: 50,
+                                                    height: 50,
+                                                    decoration: BoxDecoration(
+                                                      color: AppColors.primaryContainer,
+                                                      borderRadius: BorderRadius.circular(12),
+                                                    ),
+                                                    child: Icon(
+                                                      vehicle.wheelchairAccessible
+                                                          ? Icons.accessible_forward_rounded
+                                                          : Icons.directions_car_rounded,
+                                                      color: AppColors.primary,
+                                                      size: 24,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 16),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Text(
+                                                          vehicle.licensePlate,
+                                                          style: GoogleFonts.inter(
+                                                            fontWeight: FontWeight.w700,
+                                                            fontSize: 16,
+                                                            color: AppColors.textPrimary,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(height: 4),
+                                                        Text(
+                                                          '${vehicle.year} ${vehicle.make} ${vehicle.model}',
+                                                          style: GoogleFonts.inter(
+                                                            fontSize: 14,
+                                                            color: AppColors.textSecondary,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  Icon(Icons.arrow_forward_ios, color: AppColors.primary, size: 16),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
                       ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -297,36 +289,71 @@ class _VehicleConfirmationPageState extends State<VehicleConfirmationPage> {
 
   Widget _buildConfirmationView(VehicleService vehicleService) {
     return Scaffold(
-      backgroundColor: AppColors.lightBackground,
-      appBar: AppBar(
-        title: Text('CONFIRM VEHICLE', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 18, color: Colors.white)),
-        centerTitle: true,
-        backgroundColor: AppColors.primary,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: _goBackToSearch,
-        ),
-        actions: [
-          TextButton(
-             onPressed: () => context.go('/driver/dashboard'),
-             child: Text('Overview', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
-          )
+      backgroundColor: AppColors.darkBackground,
+      body: Stack(
+        children: [
+          // 1. Background Image
+          Positioned.fill(
+            child: Image.network(
+              'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=2070&auto=format&fit=crop',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(color: AppColors.darkBackground),
+            ),
+          ),
+          
+          // 2. Dark Overlay
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withOpacity(0.7),
+            ),
+          ),
+
+          // 3. Content
+          SafeArea(
+            child: Column(
+               children: [
+                 // Custom AppBar
+                 Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: _goBackToSearch,
+                      ),
+                      Text(
+                        'CONFIRM VEHICLE', 
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 18, color: Colors.white)
+                      ),
+                      TextButton(
+                         onPressed: () => context.go('/driver/dashboard'),
+                         child: Text('Overview', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
+                      )
+                    ],
+                  ),
+                ),
+                
+                Expanded(
+                  child: _VehicleConfirmationView(
+                    vehicle: _matchingVehicle!,
+                    getTypeLabel: (type) {
+                      switch (type) {
+                        case VehicleType.sedan: return 'Sedan';
+                        case VehicleType.suv: return 'SUV';
+                        case VehicleType.van: return 'Van';
+                        case VehicleType.wheelchairVan: return 'Wheelchair Van';
+                        case VehicleType.ambulette: return 'Ambulette';
+                      }
+                    },
+                    onWrongVehicle: _goBackToSearch,
+                    onConfirm: () => _confirmVehicle(vehicleService),
+                  ),
+                ),
+               ],
+            ),
+          ),
         ],
-      ),
-      body: _VehicleConfirmationView(
-        vehicle: _matchingVehicle!,
-        getTypeLabel: (type) {
-          switch (type) {
-            case VehicleType.sedan: return 'Sedan';
-            case VehicleType.suv: return 'SUV';
-            case VehicleType.van: return 'Van';
-            case VehicleType.wheelchairVan: return 'Wheelchair Van';
-            case VehicleType.ambulette: return 'Ambulette';
-          }
-        },
-        onWrongVehicle: _goBackToSearch,
-        onConfirm: () => _confirmVehicle(vehicleService),
       ),
     );
   }

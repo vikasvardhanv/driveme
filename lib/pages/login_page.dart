@@ -7,6 +7,7 @@ import 'package:yazdrive/services/user_service.dart';
 import 'package:yazdrive/services/trip_service.dart';
 import 'package:yazdrive/services/location_service.dart';
 import 'package:yazdrive/theme.dart';
+import 'package:yazdrive/models/user_model.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,7 +20,7 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  String _selectedRole = 'driver';
+  
   bool _isLoading = false;
   bool _isPasswordVisible = false;
 
@@ -42,22 +43,36 @@ class _LoginPageState extends State<LoginPage> {
       await userService.loadUsers();
     }
     
-    final user = await userService.login(_emailController.text.trim(), _passwordController.text, _selectedRole);
+    // Login without role (backend handles validation)
+    final user = await userService.login(_emailController.text.trim(), _passwordController.text);
 
     if (!mounted) return;
 
     if (user != null) {
-      if (_selectedRole == 'driver') {
+      if (user.role == UserRole.driver) {
         final tripService = context.read<TripService>();
         final locationService = context.read<LocationService>();
 
         tripService.initializeSocketConnection(user.id);
         locationService.initSocket(user.id);
-        await tripService.fetchTripsFromBackend(user.id);
+        try {
+          await tripService.fetchTripsFromBackend(user.id);
+        } catch (e) {
+          debugPrint('Error fetching trips: $e');
+        }
 
         if (mounted) context.go('/driver/vehicle-confirmation');
-      } else if (_selectedRole == 'admin' || _selectedRole == 'dispatcher') {
+      } else if (user.role == UserRole.admin || user.role == UserRole.dispatcher) {
         context.go('/admin/dashboard');
+      } else {
+         ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Access denied. Role not supported.'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -78,205 +93,181 @@ class _LoginPageState extends State<LoginPage> {
     final appInit = context.watch<AppInitProvider>();
     
     return Scaffold(
-      backgroundColor: AppColors.lightBackground,
-      body: SafeArea(
-        child: Center(
-          child: !appInit.isInitialized 
-            ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-            : SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Brand Logo/Icon
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withOpacity(0.3),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.all(16),
-                      child: Image.asset(
-                        'assets/images/drivemeyaz.jpeg',
-                        width: 48,
-                        height: 48,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    
-                    // Welcome Text
-                    Text(
-                      'Welcome Back',
-                      style: GoogleFonts.inter(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.5,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Sign in to access your dashboard',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w400,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    
-                    const SizedBox(height: 48),
+      backgroundColor: AppColors.darkBackground, // Fallback color
+      body: Stack(
+        children: [
+          // 1. Background Image
+          Positioned.fill(
+            child: Image.network(
+              'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=2070&auto=format&fit=crop',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(color: AppColors.darkBackground),
+            ),
+          ),
+          
+          // 2. Dark Overlay
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withOpacity(0.6),
+            ),
+          ),
 
-                    // Email Field
-                    _PremiumTextField(
-                      controller: _emailController,
-                      label: 'Email Address',
-                      hint: 'name@company.com',
-                      icon: Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) {
-                         if (value == null || value.isEmpty) return 'Please enter your email';
-                         if (!value.contains('@')) return 'Please enter a valid email';
-                         return null;
-                      },
-                    ),
-                    
-                    const SizedBox(height: 20),
-
-                    // Password Field
-                    _PremiumTextField(
-                      controller: _passwordController,
-                      label: 'Password',
-                      hint: '••••••••',
-                      icon: Icons.lock_outline_rounded,
-                      isPassword: true,
-                      isPasswordVisible: _isPasswordVisible,
-                      onPasswordToggle: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
-                      validator: (value) => (value == null || value.isEmpty) ? 'Please enter your password' : null,
-                    ),
-
-                    const SizedBox(height: 24),
-                    
-                    // Role Selection
-                    Text(
-                      'I AM A',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textTertiary,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                       padding: const EdgeInsets.all(4),
-                       decoration: BoxDecoration(
-                         color: AppColors.lightSurface,
-                         borderRadius: BorderRadius.circular(12),
-                         border: Border.all(color: AppColors.lightBorder),
-                       ),
-                       child: Row(
-                         children: [
-                           Expanded(
-                             child: _RoleSelectionItem(
-                               label: 'Driver',
-                               isSelected: _selectedRole == 'driver',
-                               onTap: () => setState(() => _selectedRole = 'driver'),
-                             ),
-                           ),
-                           Expanded(
-                             child: _RoleSelectionItem(
-                               label: 'Dispatcher',
-                               isSelected: _selectedRole == 'dispatcher',
-                               onTap: () => setState(() => _selectedRole = 'dispatcher'),
-                             ),
-                           ),
-                           Expanded(
-                             child: _RoleSelectionItem(
-                               label: 'Admin',
-                               isSelected: _selectedRole == 'admin',
-                               onTap: () => setState(() => _selectedRole = 'admin'),
-                             ),
-                           ),
-                         ],
-                       ),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    // Submit Button
-                    Container(
-                      height: 56,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: LinearGradient(
-                          colors: [AppColors.primary, AppColors.primaryDark],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                           BoxShadow(
-                             color: AppColors.primary.withOpacity(0.3),
-                             blurRadius: 16,
-                             offset: const Offset(0, 8),
-                           ),
-                        ],
-                      ),
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleLogin,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                            : Text(
-                                'Sign In',
-                                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
-                              ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-                    
-                    // Footer Links
-                    Row(
+          // 3. Content
+          SafeArea(
+            child: Center(
+              child: !appInit.isInitialized 
+                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                : SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text('New Driver? ', style: GoogleFonts.inter(color: AppColors.textSecondary)),
-                        TextButton(
-                          onPressed: () => context.push('/driver/apply'),
-                          child: Text(
-                            'Apply Here', 
-                            style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.primary),
+                        // Brand Logo/Icon
+                        Center(
+                          child: Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 10),
+                                ),
+                              ],
+                            ),
+                            padding: const EdgeInsets.all(20),
+                            child: Image.asset(
+                              'assets/images/drivemeyaz.jpeg',
+                              width: 60,
+                              height: 60,
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ),
+                        const SizedBox(height: 40),
+                        
+                        // Welcome Text (Updated for dark background)
+                        Text(
+                          'Welcome Back',
+                          style: GoogleFonts.inter(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Sign in to access your dashboard',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            color: Colors.white70,
+                            fontWeight: FontWeight.w400,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        
+                        const SizedBox(height: 48),
+
+                        // Email Field
+                        _PremiumTextField(
+                          controller: _emailController,
+                          label: 'Email Address',
+                          hint: 'name@company.com',
+                          icon: Icons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (value) {
+                             if (value == null || value.isEmpty) return 'Please enter your email';
+                             if (!value.contains('@')) return 'Please enter a valid email';
+                             return null;
+                          },
+                        ),
+                        
+                        const SizedBox(height: 20),
+
+                        // Password Field
+                        _PremiumTextField(
+                          controller: _passwordController,
+                          label: 'Password',
+                          hint: '••••••••',
+                          icon: Icons.lock_outline_rounded,
+                          isPassword: true,
+                          isPasswordVisible: _isPasswordVisible,
+                          onPasswordToggle: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                          validator: (value) => (value == null || value.isEmpty) ? 'Please enter your password' : null,
+                        ),
+
+                        const SizedBox(height: 40), 
+                        
+                        // Submit Button
+                        Container(
+                          height: 56,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            gradient: LinearGradient(
+                              colors: [AppColors.primary, AppColors.primaryDark],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            boxShadow: [
+                               BoxShadow(
+                                 color: AppColors.primary.withOpacity(0.4),
+                                 blurRadius: 16,
+                                 offset: const Offset(0, 8),
+                               ),
+                            ],
+                          ),
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _handleLogin,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                : Text(
+                                    'Sign In',
+                                    style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+                                  ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+                        
+                        // Footer Links
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('New Driver? ', style: GoogleFonts.inter(color: Colors.white70)),
+                            TextButton(
+                              onPressed: () => context.push('/driver/apply'),
+                              child: Text(
+                                'Apply Here', 
+                                style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 24),
                       ],
                     ),
-
-                    const SizedBox(height: 24),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -312,7 +303,7 @@ class _PremiumTextField extends StatelessWidget {
       children: [
         Text(
           label,
-          style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
+          style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white),
         ),
         const SizedBox(height: 8),
         TextFormField(
@@ -357,41 +348,6 @@ class _PremiumTextField extends StatelessWidget {
           validator: validator,
         ),
       ],
-    );
-  }
-}
-
-class _RoleSelectionItem extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _RoleSelectionItem({required this.label, required this.isSelected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: isSelected 
-              ? [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 4, offset: const Offset(0, 2))] 
-              : null,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? AppColors.textPrimary : AppColors.textTertiary,
-          ),
-        ),
-      ),
     );
   }
 }
