@@ -1,7 +1,7 @@
 name: yazdrive
 description: "Drivemeyaz - A robust NEMT platform streamlining Arizona AHCCCS workflows, featuring live GPS tracking, comprehensive trip management, and automated compliance reporting for efficient non-emergency medical transportation."
 publish_to: "none"
-version: 1.0.0
+version: 1.0.1+2
 
 environment:
   sdk: ^3.6.0
