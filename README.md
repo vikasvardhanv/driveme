@@ -203,11 +203,6 @@ Archive in Xcode
 Upload to App Store Connect
 Submit for review
 Once approved, release to App Store
-### App Store Reviewer Credentials
-For Apple Store submission, use the following account for testing:
-- **Email**: `driver@yazdrive.com`
-- **Password**: `DriveMe2026!`
-
 Step 4: Test the Deployment
 Install the app on a real device
 Verify backend connection:

@@ -111,6 +111,16 @@ class _LoginPageState extends State<LoginPage> {
               color: Colors.black.withOpacity(0.6),
             ),
           ),
+          
+          // Debug Button (Temporary)
+          Positioned(
+            top: 40,
+            right: 20,
+            child: IconButton(
+              icon: const Icon(Icons.bug_report, color: Colors.white70),
+              onPressed: () => context.push(AppRoutes.debugLogs),
+            ),
+          ),
 
           // 3. Content
           SafeArea(

@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import 'package:yazdrive/pages/login_page.dart';
+import 'package:yazdrive/pages/debug_log_page.dart';
 import 'package:yazdrive/pages/driver_application_page.dart';
 import 'package:yazdrive/pages/driver/driver_dashboard_page.dart';
 import 'package:yazdrive/pages/driver/driver_trip_detail_modern.dart';
@@ -22,6 +23,11 @@ class AppRouter {
         path: AppRoutes.home,
         name: 'home',
         pageBuilder: (context, state) => NoTransitionPage(child: const LoginPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.debugLogs,
+        name: 'debug_logs',
+        pageBuilder: (context, state) => NoTransitionPage(child: const DebugLogPage()),
       ),
       GoRoute(
         path: AppRoutes.driverApplication,
@@ -111,6 +117,7 @@ class AppRouter {
 /// Route path constants
 class AppRoutes {
   static const String home = '/';
+  static const String debugLogs = '/debug-logs';
   static const String driverApplication = '/driver/apply';
   static const String driverDashboard = '/driver/dashboard';
   static const String driverTrips = '/driver/trips';

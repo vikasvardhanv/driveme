@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import 'package:http/http.dart' as http;
 import 'package:yazdrive/models/user_model.dart';
 import 'package:yazdrive/services/api_service.dart';
+import 'package:yazdrive/utils/logger.dart';
 
 /// Service for managing users (drivers, dispatchers, admins, members)
 class UserService extends ChangeNotifier {
@@ -56,6 +57,7 @@ class UserService extends ChangeNotifier {
   
   Future<UserModel?> login(String email, String password, [String role = 'DRIVER']) async {
     try {
+      LogService().info('Attempting login for email: $email with role: $role');
       final response = await http.post(
         Uri.parse('$_baseUrl/auth/login'),
         headers: {'Content-Type': 'application/json'},
@@ -95,11 +97,14 @@ class UserService extends ChangeNotifier {
         notifyListeners();
         return user;
       } else {
+        LogService().warn('Login failed with status: ${response.statusCode}, body: ${response.body}');
         debugPrint('Login failed: ${response.body}');
         return null;
       }
-    } catch (e) {
+    } catch (e, stack) {
+      LogService().error('Login error', e);
       debugPrint('Login error: $e');
+      debugPrintStack(stackTrace: stack);
       return null;
     }
   }
