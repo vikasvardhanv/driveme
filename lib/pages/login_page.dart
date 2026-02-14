@@ -8,6 +8,7 @@ import 'package:yazdrive/services/trip_service.dart';
 import 'package:yazdrive/services/location_service.dart';
 import 'package:yazdrive/theme.dart';
 import 'package:yazdrive/models/user_model.dart';
+import 'package:yazdrive/nav.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
