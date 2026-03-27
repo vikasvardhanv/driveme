@@ -6,10 +6,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yazdrive/utils/logger.dart';
 
 class ApiService {
-  // Use production URL (Coolify deployment)
+  // Configuration
   static const String _productionUrl = 'https://backend.yaztrans.com';
+  static const String _localUrl = kIsWeb ? 'http://localhost:3001' : 'http://127.0.0.1:3001';
 
-  static String get baseUrl => _productionUrl;
+  static String get baseUrl {
+    if (kDebugMode) {
+      // In development, use local backend
+      return _localUrl;
+    }
+    return _productionUrl;
+  }
 
   Future<Map<String, String>> _getHeaders() async {
     final prefs = await SharedPreferences.getInstance();

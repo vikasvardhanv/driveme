@@ -9,6 +9,7 @@ import 'package:yazdrive/services/location_service.dart';
 import 'package:yazdrive/theme.dart';
 import 'package:yazdrive/models/user_model.dart';
 import 'package:yazdrive/nav.dart';
+import 'package:yazdrive/globals.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -66,27 +67,91 @@ class _LoginPageState extends State<LoginPage> {
       } else if (user.role == UserRole.admin || user.role == UserRole.dispatcher) {
         context.go('/admin/dashboard');
       } else {
-         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Access denied. Role not supported.'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
+        showPremiumSnackBar(
+          message: 'Access denied. Role not supported.',
+          isError: true,
         );
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Invalid credentials. Please try again.'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
+      showPremiumSnackBar(
+        message: 'Invalid credentials. Please try again.',
+        isError: true,
       );
     }
 
     setState(() => _isLoading = false);
+  }
+
+  Future<void> _showForgotPasswordDialog() async {
+    final emailController = TextEditingController(text: _emailController.text.trim());
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) {
+        bool isSubmitting = false;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Reset Password'),
+              content: TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Email Address',
+                  hintText: 'name@company.com',
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: isSubmitting
+                      ? null
+                        : () async {
+                            final email = emailController.text.trim();
+                            if (email.isEmpty || !email.contains('@')) {
+                              showPremiumSnackBar(
+                                message: 'Please enter a valid email address.',
+                                isError: true,
+                              );
+                              return;
+                            }
+
+                            setDialogState(() => isSubmitting = true);
+                            
+                            // Capture the service before the async gap to be safe
+                            final userService = this.context.read<UserService>();
+                            final message = await userService.forgotPassword(email);
+                            
+                            if (dialogContext.mounted) {
+                              Navigator.of(dialogContext).pop();
+                            }
+
+                            final hasError = message.toLowerCase().startsWith('unable');
+                            showPremiumSnackBar(
+                              message: message,
+                              isError: hasError,
+                            );
+                          },
+                  child: isSubmitting
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Send Reset'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    emailController.dispose();
   }
 
   @override
@@ -215,6 +280,21 @@ class _LoginPageState extends State<LoginPage> {
                           isPasswordVisible: _isPasswordVisible,
                           onPasswordToggle: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
                           validator: (value) => (value == null || value.isEmpty) ? 'Please enter your password' : null,
+                        ),
+
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: _isLoading ? null : _showForgotPasswordDialog,
+                            child: Text(
+                              'Forgot Password?',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                         ),
 
                         const SizedBox(height: 40), 

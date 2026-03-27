@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:yazdrive/theme.dart';
 import 'package:yazdrive/nav.dart';
+import 'package:yazdrive/globals.dart';
 import 'package:yazdrive/services/user_service.dart';
 import 'package:yazdrive/services/trip_service.dart';
 import 'package:yazdrive/services/vehicle_service.dart';
@@ -57,6 +58,7 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp.router(
         title: 'Drivemeyaz',
+        scaffoldMessengerKey: scaffoldMessengerKey,
         debugShowCheckedModeBanner: false,
         theme: lightTheme,
         darkTheme: darkTheme,
